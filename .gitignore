@@ -1,0 +1,22 @@
+# Video files
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.avi
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Uploads
+/tmp/cosmix_uploads/
+
+# OS
+.DS_Store
