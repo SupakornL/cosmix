@@ -20,7 +20,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password, full_name: form.fullName }),
@@ -28,7 +28,7 @@ export default function RegisterPage() {
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Registration failed'); return }
 
-      const meRes = await fetch('/api/auth/me', {
+      const meRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/me', {
         headers: { Authorization: `Bearer ${data.access_token}` },
       })
       const user = await meRes.json()
