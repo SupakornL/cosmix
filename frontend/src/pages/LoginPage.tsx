@@ -18,7 +18,7 @@ export default function LoginPage() {
       form.append('username', email)
       form.append('password', password)
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/login', { method: 'POST', body: form })
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/login`, { method: 'POST', body: form })
       const data = await res.json()
 
       if (!res.ok) {
@@ -27,7 +27,7 @@ export default function LoginPage() {
       }
 
       // Fetch user info
-      const meRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/me', {
+      const meRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/me`, {
         headers: { Authorization: `Bearer ${data.access_token}` },
       })
       const user = await meRes.json()

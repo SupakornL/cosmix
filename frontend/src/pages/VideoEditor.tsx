@@ -494,14 +494,14 @@ export default function VideoEditor() {
   async function loadJob() {
     setLoading(true)
     try {
-      const srtRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/subtitle`, { headers: { Authorization: `Bearer ${token}` } })
+      const srtRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/subtitle``, { headers: { Authorization: `Bearer ${token}` } })
       if (srtRes.ok) setSegments(parseSRT(await srtRes.text()))
 
-      const wordsRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/words`, { headers: { Authorization: `Bearer ${token}` } })
+      const wordsRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/words``, { headers: { Authorization: `Bearer ${token}` } })
       if (wordsRes.ok) { const d = await wordsRes.json(); setWords(d.words || []) }
 
       // Load AI suggestions
-      const statusRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/status`, { headers: { Authorization: `Bearer ${token}` } })
+      const statusRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/status``, { headers: { Authorization: `Bearer ${token}` } })
       if (statusRes.ok) {
         const statusData = await statusRes.json()
         if (statusData.suggestions) setSuggestions(statusData.suggestions)
@@ -607,7 +607,7 @@ export default function VideoEditor() {
   async function handleExport() {
     setExporting(true)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export``, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: segments }),
