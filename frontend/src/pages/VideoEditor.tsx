@@ -607,7 +607,7 @@ export default function VideoEditor() {
   async function handleExport() {
     setExporting(true)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export``, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: segments }),
