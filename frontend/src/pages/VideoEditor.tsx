@@ -601,7 +601,7 @@ export default function VideoEditor() {
   }
 
   function exportSRT() {
-    return segments.map((s, i) => `${i+1}\n${fmtSRT(s.start)} --> ${fmtSRT(s.end)}\n${s.text}`).join('\n\n')
+    return segments.map((s, i) => (i+1) + '\n' + fmtSRT(s.start) + ' --> ' + fmtSRT(s.end) + '\n' + s.text).join('\n\n')
   }
 
   async function handleExport() {
