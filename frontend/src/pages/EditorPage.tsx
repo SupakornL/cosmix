@@ -376,7 +376,7 @@ export default function EditorPage() {
                   </button>
                 )}
                 <button style={S.actionBtnPrimary} onClick={() => navigate(`/editor/${jobResult.job_id}`)}>
-                  ⬇ Download Video
+                  ✂️ Click to Edit Video
                 </button>
               </div>
 
