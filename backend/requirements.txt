@@ -34,3 +34,4 @@ boto3==1.34.131
 bcrypt==4.0.1
 anthropic
 groq
+supervisor

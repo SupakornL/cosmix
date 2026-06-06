@@ -2,11 +2,11 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "/app/.venv/bin/python -m supervisord -c /app/supervisord.conf"
+startCommand = "/app/.venv/bin/supervisord -c /app/supervisord.conf"
 healthcheckPath = "/health"
 
 [phases.setup]
-nixPkgs = ["python311", "ffmpeg", "supervisor"]
+nixPkgs = ["python311", "ffmpeg"]
 
 [phases.install]
 cmds = [
