@@ -16,7 +16,7 @@ interface Overview {
 // ─── Helpers ─────────────────────────────────────────────────
 const TOKEN = () => useAuthStore.getState().token || ''
 const api = (path: string, opts?: RequestInit) =>
-  fetch(`/api${path}`, { ...opts, headers: { Authorization: `Bearer ${TOKEN()}`, 'Content-Type': 'application/json', ...(opts?.headers || {}) } })
+  fetch(`${import.meta.env.VITE_API_URL || ''}/api${path}`, { ...opts, headers: { Authorization: `Bearer ${TOKEN()}`, 'Content-Type': 'application/json', ...(opts?.headers || {}) } })
 
 const ROLE_COLORS: Record<string, string> = {
   admin: '#34D399', pay_user: '#A78BFA', free_user: '#60A5FA',
