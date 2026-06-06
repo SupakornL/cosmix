@@ -92,7 +92,7 @@ function deriveWords(seg: Segment, apiWords?: WordStamp[]): WordStamp[] {
 
   // Use API words if available for this segment (most accurate)
   if (apiWords && apiWords.length > 0) {
-    const segApiWords = apiWords.filter(w => w.start >= seg.start - 0.15 && w.end <= seg.end + 0.15)
+    const segApiWords = apiWords.filter(w => w.start >= seg.start - 0.5 && w.start < seg.end + 0.5)
     if (segApiWords.length > 0) return segApiWords
   }
 
