@@ -203,7 +203,6 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
   } as React.CSSProperties)
 
   // WORD_SINGLE — แสดงทีละคำเดียว
-  console.log('DEBUG word_single:', style.displayMode, 'segWords:', segWords.length, 'currentTime:', currentTime)
   if (style.displayMode === 'word_single') {
     const active = segWords.find(w => currentTime >= w.start && currentTime <= w.end) || segWords[0]
     if (!active) return null
