@@ -508,7 +508,7 @@ export default function VideoEditor() {
         if (statusData.suggestions) setSuggestions(statusData.suggestions)
       }
 
-      setVideoUrl(`/api/jobs/${jobId}/video?token=${token}`)
+      setVideoUrl(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/video?token=${token}`)
     } finally { setLoading(false) }
   }
 
