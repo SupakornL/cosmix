@@ -127,7 +127,7 @@ export default function EditorPage() {
   function pollJobStatus(jobId: string) {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/status``, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/status`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await res.json()
@@ -149,7 +149,7 @@ export default function EditorPage() {
     setChatLoading(true)
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobResult.job_id}/chat``, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobResult.job_id}/chat`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg, history: chatMsgs }),
@@ -165,7 +165,7 @@ export default function EditorPage() {
   // ─── Download subtitle ────────────────────────────────────
   async function downloadSRT() {
     if (!jobResult?.job_id) return
-    const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobResult.job_id}/subtitle``, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobResult.job_id}/subtitle`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     const blob = await res.blob()
