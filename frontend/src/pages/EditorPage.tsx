@@ -111,7 +111,7 @@ export default function EditorPage() {
           else reject(new Error(xhr.responseText))
         }
         xhr.onerror = () => reject(new Error('Upload failed'))
-        xhr.open('POST', '/api/jobs/upload')
+        xhr.open('POST', `${import.meta.env.VITE_API_URL || ''}/api/jobs/upload`)
         xhr.setRequestHeader('Authorization', `Bearer ${token}`)
         xhr.send(form)
       })
