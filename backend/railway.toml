@@ -2,5 +2,15 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "/app/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "/app/.venv/bin/python -m supervisord -c /app/supervisord.conf"
 healthcheckPath = "/health"
+
+[phases.setup]
+nixPkgs = ["python311", "ffmpeg", "supervisor"]
+
+[phases.install]
+cmds = [
+  "curl -LsSf https://astral.sh/uv/install.sh | sh",
+  "/root/.local/bin/uv venv /app/.venv",
+  "/root/.local/bin/uv pip install -r requirements.txt --python /app/.venv/bin/python"
+]
