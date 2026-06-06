@@ -453,6 +453,7 @@ export default function VideoEditor() {
   const { jobId } = useParams()
   const navigate = useNavigate()
   const token = useAuthStore(s => s.token)
+  const user = useAuthStore(s => s.user)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoUrl, setVideoUrl] = useState('')
@@ -627,7 +628,14 @@ export default function VideoEditor() {
 
       <nav style={S.nav}>
         <div style={S.logo} onClick={() => navigate('/editor')}>⬡ COSMIX</div>
-        <div style={{ color: '#475569', fontSize: 13 }}>Video Editor</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ color: '#475569', fontSize: 13 }}>Video Editor</div>
+          {user?.role === 'admin' && (
+            <button style={{ background: 'rgba(139,92,246,0.15)', borderTop: '1px solid rgba(139,92,246,0.3)', borderLeft: '1px solid rgba(139,92,246,0.3)', borderRight: '1px solid rgba(139,92,246,0.3)', borderBottom: '1px solid rgba(139,92,246,0.3)', color: '#A78BFA', padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }} onClick={() => navigate('/admin')}>
+              ⬡ Admin Panel
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button style={S.btnGhost} onClick={() => { const b = new Blob([exportSRT()],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='subtitle.srt'; a.click() }}>⬇ SRT</button>
           <button style={{ ...S.btnPrimary, opacity: exporting ? 0.6 : 1 }} onClick={handleExport} disabled={exporting}>
