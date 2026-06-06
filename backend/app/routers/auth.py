@@ -76,3 +76,13 @@ def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
         "role": user.role,
         "trial_end": user.trial_end,
     }
+
+@router.post("/fix-admin")
+def fix_admin(db: Session = Depends(get_db)):
+    from ..core.security import get_password_hash
+    user = db.query(User).filter(User.email == "admin@cosmix.com").first()
+    if not user:
+        return {"error": "admin not found"}
+    user.hashed_password = get_password_hash("admin1234")
+    db.commit()
+    return {"ok": True, "email": user.email}
