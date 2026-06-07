@@ -1061,7 +1061,7 @@ export default function VideoEditor() {
             <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={style} />
             {/* Drag overlay — transparent layer on top for dragging subtitle */}
             <div
-              style={{ position: 'absolute', inset: 0, zIndex: 20, cursor: isDragging ? 'grabbing' : 'crosshair', opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 20, cursor: isDragging ? 'grabbing' : 'crosshair', opacity: 0, pointerEvents: isDragging ? 'auto' : 'none' }}
               onMouseDown={e => {
                 const wrap = e.currentTarget.parentElement
                 if (!wrap) return
