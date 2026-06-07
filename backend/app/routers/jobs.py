@@ -51,12 +51,21 @@ async def upload_video(
         content = await file.read()
         await f.write(content)
     
+    # Upload to R2
+    r2_key = f"uploads/{job_id}{file_ext}"
+    try:
+        from ..services.r2_storage import upload_file
+        upload_file(local_path, r2_key)
+        os.remove(local_path)  # cleanup local
+    except Exception as e:
+        r2_key = local_path  # fallback to local if R2 fails
+
     # Create job record
     job = Job(
         id=job_id,
         user_id=current_user.id,
         original_filename=file.filename,
-        input_s3_key=local_path,  # local path for now, s3 key in production
+        input_s3_key=r2_key,  # R2 key or local path
         ai_mode=ai_mode,
         subtitle_language=subtitle_language,
         status=JobStatus.pending,

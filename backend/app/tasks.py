@@ -27,7 +27,15 @@ def process_video_task(self, job_id: str):
         job.progress = 5
         db.commit()
 
+        # Download from R2 if needed
         video_path = job.input_s3_key
+        if not os.path.exists(video_path):
+            from .services.r2_storage import download_file
+            local_path = f"/tmp/cosmix_uploads/{job.id}{os.path.splitext(video_path)[1] if '.' in video_path else '.mp4'}"
+            os.makedirs("/tmp/cosmix_uploads", exist_ok=True)
+            download_file(video_path, local_path)
+            video_path = local_path
+
         duration = get_video_duration(video_path)
 
         # Step 1: Extract audio

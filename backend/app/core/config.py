@@ -20,8 +20,9 @@ class Settings(BaseSettings):
     STRIPE_PRO_PRICE_ID: str = ""
     STRIPE_TEAM_PRICE_ID: str = ""
     
-    S3_BUCKET_NAME: str = "cosmix-videos"
-    S3_REGION: str = "ap-southeast-1"
+    S3_BUCKET_NAME: str = "cosmix"
+    S3_REGION: str = "auto"
+    S3_ENDPOINT_URL: str = ""
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     
