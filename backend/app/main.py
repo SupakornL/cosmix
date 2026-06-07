@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .routers import auth, jobs, admin
+from .routers import auth, jobs, admin, payments
 
 app = FastAPI(
     title="Cosmix API",
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(payments.router, prefix="/api")
 
 @app.get("/health")
 def health():

@@ -36,3 +36,4 @@ anthropic
 groq
 supervisor
 attacut
+stripe
