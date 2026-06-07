@@ -70,7 +70,7 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
             "file": (audio_path, f, "audio/mp3"),
             "model": "whisper-large-v3",
             "response_format": "verbose_json",
-            "timestamp_granularities": ["segment"],
+            "timestamp_granularities": ["segment", "word"],
         }
         if language != "auto":
             kwargs["language"] = language
@@ -88,8 +88,17 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
             for i, s in enumerate(result.segments)
         ]
 
-    # Build word timestamps using PyThaiNLP (more accurate than Whisper word-level)
-    words = build_word_timestamps(segments)
+    # Use Groq word timestamps if available, fallback to PyThaiNLP
+    groq_words = []
+    if hasattr(result, "words") and result.words:
+        for w in result.words:
+            if hasattr(w, "word"):
+                groq_words.append({
+                    "word": w.word.strip(),
+                    "start": round(w.start, 3),
+                    "end": round(w.end, 3),
+                })
+    words = groq_words if groq_words else build_word_timestamps(segments)
 
     return {
         "text": result.text,
@@ -97,7 +106,6 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
         "segments": segments,
         "words": words,
     }
-
 def segments_to_srt(segments: list) -> str:
     def fmt(s):
         h, m, sec, ms = int(s//3600), int((s%3600)//60), int(s%60), int((s-int(s))*1000)
