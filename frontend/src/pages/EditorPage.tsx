@@ -274,8 +274,9 @@ export default function EditorPage() {
             <div style={S.sectionTitle}>Subtitle Options</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 10 }}>
               <input type="checkbox" checked={burnSubtitle} onChange={e => setBurnSubtitle(e.target.checked)}
-                style={{ accentColor: '#7C3AED', width: 16, height: 16 }} />
-              <span style={{ color: '#94A3B8', fontSize: 13 }}>Burn subtitle into video</span>
+                disabled={aiMode === 'subtitle_only'}
+                style={{ accentColor: '#7C3AED', width: 16, height: 16, opacity: aiMode === 'subtitle_only' ? 0.3 : 1, cursor: aiMode === 'subtitle_only' ? 'not-allowed' : 'pointer' }} />
+              <span style={{ color: aiMode === 'subtitle_only' ? '#374151' : '#94A3B8', fontSize: 13 }}>Burn subtitle into video{aiMode === 'subtitle_only' ? ' (ไม่รองรับใน Subtitle mode)' : ''}</span>
             </label>
             {burnSubtitle && (
               <div>
