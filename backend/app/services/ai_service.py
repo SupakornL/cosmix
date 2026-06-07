@@ -22,7 +22,7 @@ def tokenize_segment(text: str) -> list[str]:
                 continue
             if re.search(r'[\u0E00-\u0E7F]', chunk):
                 # Thai: use PyThaiNLP newmm engine
-                words = word_tokenize(chunk, engine='newmm', keep_whitespace=False)
+                words = word_tokenize(chunk, engine='longest', keep_whitespace=False)
                 tokens.extend([w for w in words if w.strip()])
             else:
                 # English/numbers: split by space
