@@ -69,6 +69,14 @@ def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == payload["sub"]).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Auto-expire trial on every /me call
+    if user.role == UserRole.trial and user.trial_end:
+        now = datetime.utcnow().replace(tzinfo=user.trial_end.tzinfo)
+        if now > user.trial_end:
+            user.role = UserRole.expired
+            db.commit()
+
     return {
         "id": str(user.id),
         "email": user.email,
@@ -76,6 +84,3 @@ def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
         "role": user.role,
         "trial_end": user.trial_end,
     }
-    user.hashed_password = get_password_hash("admin1234")
-    db.commit()
-    return {"ok": True, "email": user.email}

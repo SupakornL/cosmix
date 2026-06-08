@@ -139,3 +139,36 @@ def process_video_task(self, job_id: str):
         db.close()
         if audio_path and os.path.exists(audio_path):
             os.remove(audio_path)
+
+
+@celery_app.task(name="expire_trials")
+def expire_trials_task():
+    """Cron: expire trial users whose trial_end has passed. Runs every hour."""
+    from .core.database import SessionLocal
+    from .models.user import User, UserRole
+    from datetime import datetime, timezone
+
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        expired = db.query(User).filter(
+            User.role == UserRole.trial,
+            User.trial_end < now,
+        ).all()
+        for user in expired:
+            user.role = UserRole.expired
+        if expired:
+            db.commit()
+        return {"expired": len(expired)}
+    finally:
+        db.close()
+
+
+# Celery Beat schedule — run expire_trials every hour
+celery_app.conf.beat_schedule = {
+    "expire-trials-hourly": {
+        "task": "expire_trials",
+        "schedule": 3600.0,  # every 1 hour
+    },
+}
+celery_app.conf.timezone = "UTC"
