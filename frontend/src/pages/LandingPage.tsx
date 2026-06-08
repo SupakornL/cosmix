@@ -188,7 +188,6 @@ export default function LandingPage() {
           <span className="nav-link" onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Features</span>
           <span className="nav-link" onClick={() => navigate('/pricing')} style={{cursor:'pointer'}}>Pricing</span>
           <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
-          <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button className="btn-outline" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/login')}>Log in</button>
