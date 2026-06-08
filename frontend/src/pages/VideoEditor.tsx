@@ -625,13 +625,14 @@ export default function VideoEditor() {
   function updateSeg(id: number, changes: Partial<Segment>) {
     setSegments(s => {
       const updated = s.map(x => x.id === id ? { ...x, ...changes } : x)
-      // Rebuild words for edited segment if text changed
-      if (changes.text !== undefined) {
+      const seg = updated.find(x => x.id === id)
+      if (seg) {
+        // Always rebuild words for this segment (text or timing changed)
         setWords(w => {
-          const seg = updated.find(x => x.id === id)
-          if (!seg) return w
-          const filtered = w.filter(x => x.start < seg.start - 0.15 || x.start > seg.end + 0.15)
-          const newWords = deriveWords(seg, w)
+          // Remove old words for this segment
+          const filtered = w.filter(x => !(x.start >= seg.start - 0.5 && x.start < seg.end + 0.5))
+          // Derive new words from updated segment text (no API words reference)
+          const newWords = deriveWords(seg)
           return [...filtered, ...newWords].sort((a, b) => a.start - b.start)
         })
       }
@@ -660,11 +661,23 @@ export default function VideoEditor() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ segments: segs.map(s => ({ start: s.start, end: s.end, text: s.text })) })
       })
-      setSaveStatus(res.ok ? 'saved' : 'error')
+      if (res.ok) {
+        // Rebuild words from updated segments
+        setWords(currentWords => {
+          const rebuilt: WordStamp[] = []
+          for (const seg of segs) {
+            const derived = deriveWords(seg, currentWords)
+            rebuilt.push(...derived)
+          }
+          return rebuilt.sort((a, b) => a.start - b.start)
+        })
+        setSaveStatus('saved')
+      } else {
+        setSaveStatus('error')
+      }
     } catch {
       setSaveStatus('error')
     }
-    // Reset to idle after 2s
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
   }, [token, jobId])
