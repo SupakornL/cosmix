@@ -139,26 +139,23 @@ export default function PricingPage() {
               <tr>
                 <th style={S.th}>Feature</th>
                 <th style={{ ...S.th, textAlign: 'center' as const }}>Trial</th>
-                <th style={{ ...S.th, textAlign: 'center' as const, color: '#A78BFA' }}>Pro $9</th>
-                <th style={{ ...S.th, textAlign: 'center' as const, color: '#34D399' }}>Premium $19</th>
+                <th style={{ ...S.th, textAlign: 'center' as const, color: '#A78BFA' }}>Pro ฿199</th>
               </tr>
             </thead>
             <tbody>
               {[
-                ['Auto Cut', '✓', '✓', '✓'],
-                ['Auto Subtitle', '✓', '✓', '✓'],
-                ['Suggest Edits', '✓', '✗', '✓'],
-                ['Chat to Edit', '✓', '✗', '✓'],
-                ['Jobs/เดือน', '10 total', '50', '200'],
-                ['Export quality', '720p', '1080p', '4K'],
-                ['Watermark', '✦ มี', '✗ ไม่มี', '✗ ไม่มี'],
-                ['Priority processing', '✗', '✗', '✓'],
-              ].map(([feature, trial, pro, premium]) => (
+                ['Auto Cut + Subtitle', '✓', '✓'],
+                ['Word-by-word subtitle', '✓', '✓'],
+                ['Suggest Edits', '✓', '✓'],
+                ['Chat to Edit', '✓', '✓'],
+                ['Jobs', 'ไม่จำกัดใน 5 วัน', '100/เดือน'],
+                ['Watermark', 'มี', 'ไม่มี'],
+                ['Export quality', '1080p', '1080p'],
+              ].map(([feature, trial, pro]) => (
                 <tr key={feature as string} style={S.tr} className="compare-row">
                   <td style={S.td}>{feature}</td>
                   <td style={{ ...S.td, textAlign: 'center' as const, color: '#64748B' }}>{trial}</td>
-                  <td style={{ ...S.td, textAlign: 'center' as const, color: pro === '✗' ? '#374151' : '#A78BFA' }}>{pro}</td>
-                  <td style={{ ...S.td, textAlign: 'center' as const, color: premium === '✗' ? '#374151' : '#34D399' }}>{premium}</td>
+                  <td style={{ ...S.td, textAlign: 'center' as const, color: pro === 'มี' ? '#374151' : '#A78BFA' }}>{pro}</td>
                 </tr>
               ))}
             </tbody>
