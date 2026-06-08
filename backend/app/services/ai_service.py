@@ -126,60 +126,60 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
     if transcript.status == aai.TranscriptStatus.error:
         raise Exception(f"AssemblyAI error: {transcript.error}")
 
-    # Build segments from sentences (natural breaks)
-    segments = []
-    if transcript.get_sentences():
-        for i, sentence in enumerate(transcript.get_sentences()):
-            segments.append({
-                "id": i,
-                "start": sentence.start / 1000.0,
-                "end": sentence.end / 1000.0,
-                "text": sentence.text.strip(),
-            })
-    else:
-        # Fallback: use full transcript as one segment
-        segments = [{
-            "id": 0,
-            "start": 0,
-            "end": transcript.audio_duration or 0,
-            "text": transcript.text or "",
-        }]
-
-    # Build word timestamps — AssemblyAI gives phrase-level for Thai
-    # so we split each phrase into words using PyThaiNLP, distributing time proportionally
+    # Build raw word tokens first (AssemblyAI phrase-level → PyThaiNLP word-level)
     raw_words = []
     if transcript.words:
         for w in transcript.words:
             if w.text and w.text.strip():
-                raw_words.append({
-                    "text": w.text.strip(),
-                    "start": round(w.start / 1000.0, 3),
-                    "end": round(w.end / 1000.0, 3),
-                })
+                tokens = tokenize_segment(w.text.strip())
+                dur = (w.end - w.start) / 1000.0
+                if dur <= 0:
+                    continue
+                lengths = [max(1, len(t)) for t in tokens]
+                total = sum(lengths)
+                pos = w.start / 1000.0
+                for token, length in zip(tokens, lengths):
+                    d = dur * (length / total)
+                    raw_words.append({
+                        "word": token,
+                        "start": round(pos, 3),
+                        "end": round(pos + d, 3),
+                    })
+                    pos += d
 
-    words = []
+    # Build segments by grouping words into chunks of max 4 words
+    # This ensures word modes show only a few words at a time
+    segments = []
+    WORDS_PER_SEGMENT = 4
     if raw_words:
-        for phrase in raw_words:
-            tokens = tokenize_segment(phrase["text"])
-            if not tokens:
-                continue
-            dur = phrase["end"] - phrase["start"]
-            if dur <= 0:
-                words.append({"word": phrase["text"], "start": phrase["start"], "end": phrase["end"]})
-                continue
-            lengths = [max(1, len(t)) for t in tokens]
-            total = sum(lengths)
-            pos = phrase["start"]
-            for token, length in zip(tokens, lengths):
-                d = dur * (length / total)
-                words.append({
-                    "word": token,
-                    "start": round(pos, 3),
-                    "end": round(pos + d, 3),
-                })
-                pos += d
+        for i in range(0, len(raw_words), WORDS_PER_SEGMENT):
+            chunk = raw_words[i:i + WORDS_PER_SEGMENT]
+            text = "".join(w["word"] for w in chunk)
+            segments.append({
+                "id": i // WORDS_PER_SEGMENT,
+                "start": chunk[0]["start"],
+                "end": chunk[-1]["end"],
+                "text": text,
+            })
     else:
-        words = build_word_timestamps(segments)
+        # Fallback: use sentences
+        if transcript.get_sentences():
+            for i, sentence in enumerate(transcript.get_sentences()):
+                segments.append({
+                    "id": i,
+                    "start": sentence.start / 1000.0,
+                    "end": sentence.end / 1000.0,
+                    "text": sentence.text.strip(),
+                })
+        else:
+            segments = [{
+                "id": 0,
+                "start": 0,
+                "end": transcript.audio_duration or 0,
+                "text": transcript.text or "",
+            }]
+
+    words = raw_words if raw_words else build_word_timestamps(segments)
 
     detected_lang = getattr(transcript, "language_code", language) or language
 
