@@ -278,3 +278,34 @@ def get_word_timestamps(job_id: str, current_user: User = Depends(get_current_us
     if not words:
         raise HTTPException(status_code=404, detail="Word timestamps not available")
     return {"words": words}
+
+class SaveSubtitleRequest(BaseModel):
+    segments: list
+
+@router.patch("/{job_id}/subtitle")
+def save_subtitle(
+    job_id: str,
+    body: SaveSubtitleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Save edited subtitle segments back to DB."""
+    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Convert segments to SRT
+    def fmt(s: float) -> str:
+        h, m, sec, ms = int(s//3600), int((s%3600)//60), int(s%60), round((s%1)*1000)
+        return f"{h:02d}:{m:02d}:{sec:02d},{ms:03d}"
+
+    srt_lines = []
+    for i, seg in enumerate(body.segments, 1):
+        srt_lines.append(str(i))
+        srt_lines.append(f"{fmt(seg['start'])} --> {fmt(seg['end'])}")
+        srt_lines.append(seg['text'])
+        srt_lines.append("")
+
+    job.subtitle_srt = "\n".join(srt_lines)
+    db.commit()
+    return {"success": True, "segments": len(body.segments)}

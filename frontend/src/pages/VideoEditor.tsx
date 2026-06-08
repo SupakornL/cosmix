@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 
@@ -500,6 +500,8 @@ export default function VideoEditor() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [, tick] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [suggestions, setSuggestions] = useState<any>(null)
@@ -628,21 +630,51 @@ export default function VideoEditor() {
         setWords(w => {
           const seg = updated.find(x => x.id === id)
           if (!seg) return w
-          // Remove old words for this segment
           const filtered = w.filter(x => x.start < seg.start - 0.15 || x.start > seg.end + 0.15)
-          // Add new derived words
           const newWords = deriveWords(seg, w)
           return [...filtered, ...newWords].sort((a, b) => a.start - b.start)
         })
       }
+      triggerAutoSave(updated)
       return updated
     })
   }
-  function shiftSeg(id: number, d: number) { setSegments(s => s.map(x => x.id === id ? { ...x, start: Math.max(0, x.start+d), end: x.end+d } : x)) }
+  function shiftSeg(id: number, d: number) {
+    setSegments(s => {
+      const updated = s.map(x => x.id === id ? { ...x, start: Math.max(0, x.start+d), end: x.end+d } : x)
+      triggerAutoSave(updated)
+      return updated
+    })
+  }
 
   function addTextLayer() {
     setTextLayers(l => [...l, { id: Date.now(), text: 'New text', x: 50, y: 20, fontSize: 28, color: '#FFFFFF', bold: true, start: currentTime, end: currentTime + 3, always: false }])
   }
+
+  const saveSubtitles = useCallback(async (segs: typeof segments) => {
+    if (!token || !jobId) return
+    setSaveStatus('saving')
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/subtitle`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments: segs.map(s => ({ start: s.start, end: s.end, text: s.text })) })
+      })
+      setSaveStatus(res.ok ? 'saved' : 'error')
+    } catch {
+      setSaveStatus('error')
+    }
+    // Reset to idle after 2s
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
+  }, [token, jobId])
+
+  // Auto-save 1.5s after last edit
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const triggerAutoSave = useCallback((segs: typeof segments) => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(() => saveSubtitles(segs), 1500)
+  }, [saveSubtitles])
 
   function exportSRT() {
     return segments.map((s, i) => (i+1) + '\n' + fmtSRT(s.start) + ' --> ' + fmtSRT(s.end) + '\n' + s.text).join('\n\n')
@@ -680,6 +712,12 @@ export default function VideoEditor() {
           )}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          {saveStatus !== 'idle' && (
+            <span style={{ fontSize: 12, color: saveStatus === 'saved' ? '#34D399' : saveStatus === 'error' ? '#EF4444' : '#A78BFA' }}>
+              {saveStatus === 'saving' ? '⟳ Saving...' : saveStatus === 'saved' ? '✓ Saved' : '✗ Save failed'}
+            </span>
+          )}
+          <button style={S.btnGhost} onClick={() => saveSubtitles(segments)}>💾 Save</button>
           <button style={S.btnGhost} onClick={() => { const b = new Blob([exportSRT()],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='subtitle.srt'; a.click() }}>⬇ SRT</button>
           <button style={{ ...S.btnPrimary, opacity: exporting ? 0.6 : 1 }} onClick={handleExport} disabled={exporting}>
             {exporting ? '⟳ Exporting...' : '⬇ Export MP4'}
