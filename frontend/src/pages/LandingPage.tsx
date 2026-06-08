@@ -187,6 +187,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', gap: 36 }}>
           <span className="nav-link" onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Features</span>
           <span className="nav-link" onClick={() => navigate('/pricing')} style={{cursor:'pointer'}}>Pricing</span>
+          <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
           <span className="nav-link" style={{cursor:'pointer'}}>Docs</span>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
@@ -269,6 +270,35 @@ export default function LandingPage() {
         </div>
       </section>
 
+
+      {/* === HOW IT WORKS === */}
+      <section id="docs" style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 60 }}>
+          <div style={{ color: '#7C3AED', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '2px', marginBottom: 12 }}>How it works</div>
+          <h2 style={{ fontSize: 36, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: '#E2E8F0', margin: 0 }}>ใช้งานง่าย 3 ขั้นตอน</h2>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, justifyContent: 'center', flexWrap: 'wrap' as const }}>
+          {[
+            { step: '01', icon: '📤', title: 'Upload วีดีโอ', desc: 'อัพโหลดวีดีโอของคุณ รองรับ MP4, MOV, AVI ขนาดสูงสุด 5GB', color: '#7C3AED' },
+            { step: '02', icon: '🤖', title: 'AI ประมวลผล', desc: 'AI สร้าง subtitle อัตโนมัติ ภาษาไทย+อังกฤษ พร้อม word-by-word timing', color: '#A78BFA' },
+            { step: '03', icon: '✨', title: 'Export & Share', desc: 'แก้ subtitle, เลือก style สวยๆ แล้ว export วีดีโอได้เลย', color: '#60A5FA' },
+          ].map((item, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
+              <div style={{ textAlign: 'center', padding: '0 32px', maxWidth: 280 }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: `${item.color}18`, borderTop: `2px solid ${item.color}40`, borderLeft: `2px solid ${item.color}40`, borderRight: `2px solid ${item.color}40`, borderBottom: `2px solid ${item.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>
+                  {item.icon}
+                </div>
+                <div style={{ color: item.color, fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', marginBottom: 8 }}>STEP {item.step}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#E2E8F0', marginBottom: 10, fontFamily: "'Syne', sans-serif" }}>{item.title}</div>
+                <div style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6 }}>{item.desc}</div>
+              </div>
+              {idx < 2 && (
+                <div style={{ color: '#374151', fontSize: 24, paddingTop: 28, flexShrink: 0 }}>→</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
       {/* === PRICING === */}
       <section style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1000, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
