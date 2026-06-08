@@ -186,8 +186,8 @@ export default function EditorPage() {
         <div style={S.navLogo} onClick={() => navigate('/')}>⬡ COSMIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {isTrial && (
-            <div style={S.trialChip}>
-              ⏳ Trial
+            <div style={{...S.trialChip, cursor: 'pointer'}} onClick={() => navigate('/pricing')}>
+              ⏳ Trial — อัพเกรด Pro
             </div>
           )}
           <span style={{ color: '#475569', fontSize: 13 }}>{user?.email}</span>
