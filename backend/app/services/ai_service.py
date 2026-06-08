@@ -145,19 +145,40 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
             "text": transcript.text or "",
         }]
 
-    # Build word timestamps from AssemblyAI words (accurate!)
-    words = []
+    # Build word timestamps — AssemblyAI gives phrase-level for Thai
+    # so we split each phrase into words using PyThaiNLP, distributing time proportionally
+    raw_words = []
     if transcript.words:
         for w in transcript.words:
             if w.text and w.text.strip():
-                words.append({
-                    "word": w.text.strip(),
+                raw_words.append({
+                    "text": w.text.strip(),
                     "start": round(w.start / 1000.0, 3),
                     "end": round(w.end / 1000.0, 3),
                 })
 
-    # Fallback to PyThaiNLP if no words returned
-    if not words:
+    words = []
+    if raw_words:
+        for phrase in raw_words:
+            tokens = tokenize_segment(phrase["text"])
+            if not tokens:
+                continue
+            dur = phrase["end"] - phrase["start"]
+            if dur <= 0:
+                words.append({"word": phrase["text"], "start": phrase["start"], "end": phrase["end"]})
+                continue
+            lengths = [max(1, len(t)) for t in tokens]
+            total = sum(lengths)
+            pos = phrase["start"]
+            for token, length in zip(tokens, lengths):
+                d = dur * (length / total)
+                words.append({
+                    "word": token,
+                    "start": round(pos, 3),
+                    "end": round(pos + d, 3),
+                })
+                pos += d
+    else:
         words = build_word_timestamps(segments)
 
     detected_lang = getattr(transcript, "language_code", language) or language
