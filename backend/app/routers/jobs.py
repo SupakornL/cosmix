@@ -3,11 +3,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 import uuid, aiofiles, os
+from datetime import datetime, timezone
 from pydantic import BaseModel
 from ..core.database import get_db
 from ..core.security import decode_token
 from ..models.user import User, UserRole
 from ..models.job import Job, JobStatus, AIMode
+from ..core.limits import get_job_limit
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -41,6 +43,21 @@ async def upload_video(
     allowed = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"]
     if file.content_type not in allowed:
         raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    # Check monthly job limit
+    limit = get_job_limit(current_user.role)
+    if limit is not None:
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        jobs_this_month = db.query(Job).filter(
+            Job.user_id == current_user.id,
+            Job.created_at >= month_start,
+        ).count()
+        if jobs_this_month >= limit:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Monthly job limit reached ({limit} jobs/month). Please upgrade your plan."
+            )
     
     # Save file temporarily
     job_id = str(uuid.uuid4())
@@ -72,6 +89,10 @@ async def upload_video(
         has_watermark=current_user.role in [UserRole.trial],
     )
     db.add(job)
+    db.commit()
+
+    # Increment user total_jobs counter
+    current_user.total_jobs = str(int(current_user.total_jobs or 0) + 1)
     db.commit()
     
     # Queue processing task
