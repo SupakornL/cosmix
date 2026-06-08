@@ -78,6 +78,7 @@ function fmtTime(s: number) {
   const m = Math.floor(s/60), sec = Math.floor(s%60), ms = Math.floor((s%1)*10)
   return `${m}:${sec.toString().padStart(2,'0')}.${ms}`
 }
+function round2(n: number) { return Math.round(n * 100) / 100 }
 function fmtSRT(s: number) {
   const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60),ms=Math.round((s%1)*1000)
   return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')},${ms.toString().padStart(3,'0')}`
@@ -498,6 +499,7 @@ export default function VideoEditor() {
   const [filter, setFilter] = useState<VideoFilter>(DEFAULT_FILTER)
   const [activeTab, setActiveTab] = useState<'mode' | 'style' | 'subs' | 'text' | 'filter' | 'suggest' | 'export'>('mode')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingWordKey, setEditingWordKey] = useState<string | null>(null) // "segId-wordIdx"
   const [exporting, setExporting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -878,62 +880,113 @@ export default function VideoEditor() {
             {/* SUBS TAB */}
             {activeTab === 'subs' && (
               <div style={S.panel}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={S.ptitle}>Subtitles ({segments.length})</div>
-                  <button style={S.chip} onClick={() => setSegments(s => [...s, { id: Date.now(), start: currentTime, end: currentTime+2, text: 'New' }].sort((a,b)=>a.start-b.start))}>+ Add</button>
+                  <button style={S.chip} onClick={() => setSegments(s => [...s, { id: Date.now(), start: currentTime, end: currentTime+2, text: 'ใหม่' }].sort((a,b)=>a.start-b.start))}>+ เพิ่ม</button>
                 </div>
-                {segments.map(seg => (
-                  <div key={seg.id} style={{ ...S.subCard, ...(currentSeg?.id === seg.id ? S.subCardActive : {}) }}>
-                    {/* Time controls */}
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: '#374151', fontSize: 9, marginBottom: 2 }}>START</div>
-                        <div style={{ display: 'flex', gap: 3 }}>
-                          <button style={S.tBtn} onClick={() => updateSeg(seg.id, { start: Math.max(0, seg.start-0.1) })}>−</button>
-                          <input style={S.tInput} type="number" step="0.1" value={seg.start.toFixed(1)}
-                            onChange={e => updateSeg(seg.id, { start: +e.target.value })} />
-                          <button style={S.tBtn} onClick={() => updateSeg(seg.id, { start: seg.start+0.1 })}>+</button>
-                        </div>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: '#374151', fontSize: 9, marginBottom: 2 }}>END</div>
-                        <div style={{ display: 'flex', gap: 3 }}>
-                          <button style={S.tBtn} onClick={() => updateSeg(seg.id, { end: Math.max(seg.start+0.1, seg.end-0.1) })}>−</button>
-                          <input style={S.tInput} type="number" step="0.1" value={seg.end.toFixed(1)}
-                            onChange={e => updateSeg(seg.id, { end: +e.target.value })} />
-                          <button style={S.tBtn} onClick={() => updateSeg(seg.id, { end: seg.end+0.1 })}>+</button>
-                        </div>
-                      </div>
-                    </div>
+                {segments.map(seg => {
+                  const segWords = words.filter(w => w.start >= seg.start - 0.5 && w.start < seg.end + 0.5)
+                  const isActive = currentSeg?.id === seg.id
+                  return (
+                    <div key={seg.id} onClick={() => seek(seg.start)}
+                      style={{ background: 'var(--color-background-primary, rgba(13,19,34,0.8))', border: `0.5px solid ${isActive ? '#7F77DD' : 'rgba(139,92,246,0.12)'}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8, cursor: 'pointer' }}>
 
-                    {/* Shift */}
-                    <div style={{ display: 'flex', gap: 3, marginBottom: 6, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#374151', fontSize: 9, alignSelf: 'center' }}>Shift:</span>
-                      {[-1,-0.5,-0.1,+0.1,+0.5,+1].map(d => (
-                        <button key={d} style={{ ...S.shiftBtn, color: d > 0 ? '#34D399' : '#F472B6' }}
-                          onClick={() => shiftSeg(seg.id, d)}>{d>0?'+':''}{d}s</button>
-                      ))}
-                    </div>
+                      {/* Timestamp row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, color: '#475569', background: 'rgba(139,92,246,0.08)', borderRadius: 4, padding: '2px 6px', fontVariantNumeric: 'tabular-nums' as const }}>{seg.start.toFixed(1)}s</span>
+                        <span style={{ fontSize: 11, color: '#475569', background: 'rgba(139,92,246,0.08)', borderRadius: 4, padding: '2px 6px', fontVariantNumeric: 'tabular-nums' as const }}>{seg.end.toFixed(1)}s</span>
+                      </div>
 
-                    {/* Text */}
-                    {editingId === seg.id
-                      ? <textarea style={S.textarea} value={seg.text} autoFocus
+                      {/* Word chips */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5, marginBottom: segWords.length > 0 ? 8 : 0 }}>
+                        {segWords.length > 0 ? segWords.map((w, wi) => {
+                          const key = `${seg.id}-${wi}`
+                          const isEditingThis = editingWordKey === key
+                          return (
+                            <div key={wi} onClick={e => { e.stopPropagation(); setEditingWordKey(isEditingThis ? null : key) }}
+                              style={{ fontSize: 13, color: isEditingThis ? '#A78BFA' : '#E2E8F0', background: isEditingThis ? 'rgba(124,58,237,0.15)' : 'rgba(139,92,246,0.08)', border: `0.5px solid ${isEditingThis ? '#7F77DD' : 'rgba(139,92,246,0.2)'}`, borderRadius: 20, padding: '3px 10px', cursor: 'pointer', transition: 'all 0.15s' }}>
+                              {w.word}
+                            </div>
+                          )
+                        }) : (
+                          // No words — show text as single chip
+                          <div onClick={e => { e.stopPropagation(); setEditingId(seg.id) }}
+                            style={{ fontSize: 13, color: '#94A3B8', background: 'rgba(139,92,246,0.06)', border: '0.5px solid rgba(139,92,246,0.15)', borderRadius: 20, padding: '3px 10px', cursor: 'pointer' }}>
+                            {seg.text || 'คลิกเพื่อแก้'}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Word edit panel */}
+                      {editingWordKey && editingWordKey.startsWith(`${seg.id}-`) && (() => {
+                        const wi = parseInt(editingWordKey.split('-')[1])
+                        const w = segWords[wi]
+                        if (!w) return null
+                        return (
+                          <div onClick={e => e.stopPropagation()} style={{ borderTop: '0.5px solid rgba(139,92,246,0.15)', paddingTop: 8, marginTop: 4 }}>
+                            {/* Text edit */}
+                            <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+                              <input
+                                style={{ flex: 1, fontSize: 13, border: '0.5px solid #7F77DD', borderRadius: 8, padding: '5px 8px', background: 'rgba(8,12,20,0.8)', color: '#E2E8F0', outline: 'none', fontFamily: "'DM Sans', sans-serif" }}
+                                value={w.word}
+                                autoFocus
+                                onChange={e => {
+                                  const newWord = e.target.value
+                                  setWords(ws => ws.map((x, i) => {
+                                    const allSegWords = ws.filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
+                                    if (x === allSegWords[wi]) return { ...x, word: newWord }
+                                    return x
+                                  }))
+                                  // Update seg text too
+                                  const allSegWords = words.filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
+                                  const newText = allSegWords.map((ww, i) => i === wi ? newWord : ww.word).join('')
+                                  updateSeg(seg.id, { text: newText })
+                                }}
+                              />
+                              <button style={{ ...S.iconBtn, color: '#EF4444' }} onClick={() => {
+                                setWords(ws => ws.filter(x => x !== segWords[wi]))
+                                const newText = segWords.filter((_, i) => i !== wi).map(x => x.word).join('')
+                                updateSeg(seg.id, { text: newText })
+                                setEditingWordKey(null)
+                              }}>✕</button>
+                            </div>
+                            {/* Timing */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 11, color: '#475569', minWidth: 28 }}>เวลา</span>
+                              <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#64748B', background: 'rgba(139,92,246,0.08)', borderRadius: 4, padding: '2px 6px' }}>{w.start.toFixed(2)}s</span>
+                              <span style={{ fontSize: 11, color: '#374151' }}>→</span>
+                              <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#64748B', background: 'rgba(139,92,246,0.08)', borderRadius: 4, padding: '2px 6px' }}>{w.end.toFixed(2)}s</span>
+                              <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
+                                {[-0.1, +0.1].map(d => (
+                                  <button key={d} style={{ fontSize: 10, color: d > 0 ? '#34D399' : '#F472B6', background: 'rgba(139,92,246,0.06)', border: '0.5px solid rgba(139,92,246,0.15)', borderRadius: 4, padding: '2px 5px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                                    onClick={() => setWords(ws => ws.map(x => x === segWords[wi] ? { ...x, start: round2(x.start + d), end: round2(x.end + d) } : x))}>
+                                    {d > 0 ? '+' : ''}{d}s
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      {/* Segment-level fallback edit */}
+                      {editingId === seg.id && segWords.length === 0 && (
+                        <textarea style={{ ...S.textarea, marginTop: 6 }} value={seg.text} autoFocus
                           onChange={e => updateSeg(seg.id, { text: e.target.value })}
-                          onBlur={() => setEditingId(null)} />
-                      : <div style={{ display: 'flex', gap: 6 }}>
-                          <div style={{ flex: 1, color: '#94A3B8', fontSize: 12, cursor: 'pointer', lineHeight: 1.5 }}
-                            onClick={() => seek(seg.start)} onDoubleClick={() => setEditingId(seg.id)}>
-                            {seg.text}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <button style={S.iconBtn} onClick={() => setEditingId(seg.id)} title="Edit">✏</button>
-                            <button style={{ ...S.iconBtn, color: '#60A5FA' }} onClick={() => splitSegment(seg.id)} title="Split">✂</button>
-                            <button style={{ ...S.iconBtn, color: '#EF4444' }} onClick={() => setSegments(s => s.filter(x => x.id !== seg.id))} title="Delete">✕</button>
-                          </div>
-                        </div>
-                    }
-                  </div>
-                ))}
+                          onBlur={() => setEditingId(null)}
+                          onClick={e => e.stopPropagation()} />
+                      )}
+
+                      {/* Segment actions */}
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+                        <button style={{ ...S.iconBtn, fontSize: 11 }} onClick={e => { e.stopPropagation(); shiftSeg(seg.id, -0.1) }} title="-0.1s">◀ 0.1s</button>
+                        <button style={{ ...S.iconBtn, fontSize: 11 }} onClick={e => { e.stopPropagation(); shiftSeg(seg.id, +0.1) }} title="+0.1s">0.1s ▶</button>
+                        <button style={{ ...S.iconBtn, color: '#60A5FA' }} onClick={e => { e.stopPropagation(); splitSegment(seg.id) }} title="Split">✂</button>
+                        <button style={{ ...S.iconBtn, color: '#EF4444' }} onClick={e => { e.stopPropagation(); setSegments(s => s.filter(x => x.id !== seg.id)) }} title="Delete">✕</button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
 
