@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     
     ANTHROPIC_API_KEY: str = ""
     GROQ_API_KEY: str = ""
+    ASSEMBLYAI_API_KEY: str = ""
     
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

@@ -95,44 +95,76 @@ def build_word_timestamps(segments: list) -> list:
 
 # ─── Transcription ────────────────────────────────────────────
 async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
-    with open(audio_path, "rb") as f:
-        kwargs = {
-            "file": (audio_path, f, "audio/mp3"),
-            "model": "whisper-large-v3",
-            "response_format": "verbose_json",
-            "timestamp_granularities": ["segment", "word"],
-        }
-        if language != "auto":
-            kwargs["language"] = language
-        result = await groq_client.audio.transcriptions.create(**kwargs)
+    import assemblyai as aai
+    import asyncio
 
+    aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
+
+    # Language code mapping
+    lang_map = {
+        "th": "th", "en": "en", "ja": "ja", "zh": "zh",
+        "ko": "ko", "fr": "fr", "de": "de", "es": "es",
+        "pt": "pt", "ar": "ar", "hi": "hi", "ru": "ru",
+        "vi": "vi", "id": "id",
+    }
+
+    config_kwargs = {}
+    if language != "auto" and language in lang_map:
+        config_kwargs["language_code"] = lang_map[language]
+    else:
+        config_kwargs["language_detection"] = True
+
+    config = aai.TranscriptionConfig(**config_kwargs)
+    transcriber = aai.Transcriber(config=config)
+
+    # AssemblyAI SDK is sync — run in executor
+    loop = asyncio.get_event_loop()
+    transcript = await loop.run_in_executor(
+        None, lambda: transcriber.transcribe(audio_path)
+    )
+
+    if transcript.status == aai.TranscriptStatus.error:
+        raise Exception(f"AssemblyAI error: {transcript.error}")
+
+    # Build segments from sentences (natural breaks)
     segments = []
-    if hasattr(result, "segments") and result.segments:
-        segments = [
-            {
+    if transcript.get_sentences():
+        for i, sentence in enumerate(transcript.get_sentences()):
+            segments.append({
                 "id": i,
-                "start": s.get("start", 0),
-                "end": s.get("end", 0),
-                "text": s.get("text", "").strip(),
-            }
-            for i, s in enumerate(result.segments)
-        ]
+                "start": sentence.start / 1000.0,
+                "end": sentence.end / 1000.0,
+                "text": sentence.text.strip(),
+            })
+    else:
+        # Fallback: use full transcript as one segment
+        segments = [{
+            "id": 0,
+            "start": 0,
+            "end": transcript.audio_duration or 0,
+            "text": transcript.text or "",
+        }]
 
-    # Use Groq word timestamps if available, fallback to PyThaiNLP
-    groq_words = []
-    if hasattr(result, "words") and result.words:
-        for w in result.words:
-            if hasattr(w, "word"):
-                groq_words.append({
-                    "word": w.word.strip(),
-                    "start": round(w.start, 3),
-                    "end": round(w.end, 3),
+    # Build word timestamps from AssemblyAI words (accurate!)
+    words = []
+    if transcript.words:
+        for w in transcript.words:
+            if w.text and w.text.strip():
+                words.append({
+                    "word": w.text.strip(),
+                    "start": round(w.start / 1000.0, 3),
+                    "end": round(w.end / 1000.0, 3),
                 })
-    words = groq_words if groq_words else build_word_timestamps(segments)
+
+    # Fallback to PyThaiNLP if no words returned
+    if not words:
+        words = build_word_timestamps(segments)
+
+    detected_lang = getattr(transcript, "language_code", language) or language
 
     return {
-        "text": result.text,
-        "language": getattr(result, "language", language),
+        "text": transcript.text or "",
+        "language": detected_lang,
         "segments": segments,
         "words": words,
     }
