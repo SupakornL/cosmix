@@ -169,7 +169,7 @@ export default function AdminDashboard() {
                 <table style={S.table}>
                   <thead>
                     <tr>
-                      {['User', 'Role', 'Status', 'Trial / Joined', 'Jobs', 'Extra Days', 'Actions'].map(h => (
+                      {['User', 'Role', 'Status', 'Joined', 'Jobs', 'Days Left', 'Extra Days', 'Actions'].map(h => (
                         <th key={h} style={S.th}>{h}</th>
                       ))}
                     </tr>
@@ -193,14 +193,17 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td style={S.td}>
+                          <span style={{ color: '#475569', fontSize: 12 }}>
+                            {new Date(u.created_at).toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td style={{ ...S.td, textAlign: 'center' as const }}>
                           {u.role === 'trial' && u.days_left !== undefined ? (
-                            <span style={{ color: u.days_left <= 1 ? '#EF4444' : u.days_left <= 2 ? '#F59E0B' : '#94A3B8', fontSize: 13 }}>
-                              {u.days_left}d left
+                            <span style={{ color: u.days_left <= 1 ? '#EF4444' : u.days_left <= 3 ? '#F59E0B' : '#34D399', fontSize: 13, fontWeight: 500 }}>
+                              {u.days_left === 0 ? 'หมดวันนี้' : `${u.days_left}d`}
                             </span>
                           ) : (
-                            <span style={{ color: '#475569', fontSize: 12 }}>
-                              {new Date(u.created_at).toLocaleDateString()}
-                            </span>
+                            <span style={{ color: '#374151', fontSize: 12 }}>—</span>
                           )}
                         </td>
                         <td style={{ ...S.td, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>{u.total_jobs}</td>
