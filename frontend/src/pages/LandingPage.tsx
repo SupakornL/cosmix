@@ -188,7 +188,7 @@ export default function LandingPage() {
           <span className="nav-link" onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Features</span>
           <span className="nav-link" onClick={() => navigate('/pricing')} style={{cursor:'pointer'}}>Pricing</span>
           <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
-          <span className="nav-link" style={{cursor:'pointer'}}>Docs</span>
+          <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button className="btn-outline" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/login')}>Log in</button>
@@ -259,7 +259,7 @@ export default function LandingPage() {
             Four ways AI edits your video
           </h2>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
           {FEATURES.map(f => (
             <div key={f.title} className="feature-card">
               <div style={{ width: 48, height: 48, borderRadius: 12, background: `${f.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}>{f.icon}</div>
