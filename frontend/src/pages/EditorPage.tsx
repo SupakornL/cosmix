@@ -183,11 +183,11 @@ export default function EditorPage() {
 
       {/* Nav */}
       <nav style={S.nav}>
-        <div style={S.navLogo} onClick={() => navigate('/')}>⬡ COSMIX</div>
+        <div style={S.navLogo} onClick={() => navigate('/editor')}>⬡ COSMIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {isTrial && (
             <div style={{...S.trialChip, cursor: 'pointer'}} onClick={() => navigate('/pricing')}>
-              ⏳ Trial — อัพเกรด Pro
+              ⏳ Trial — Upgrade to Pro
             </div>
           )}
           <span style={{ color: '#475569', fontSize: 13 }}>{user?.email}</span>

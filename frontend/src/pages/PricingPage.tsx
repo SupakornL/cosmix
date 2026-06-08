@@ -49,7 +49,7 @@ const FAQ = [
 
 export default function PricingPage() {
   const navigate = useNavigate()
-  const { token } = useAuthStore()
+  const { token, user } = useAuthStore()
 
   async function handleUpgrade() {
     if (!token) { navigate('/register'); return }
@@ -80,10 +80,19 @@ export default function PricingPage() {
 
       {/* Nav */}
       <nav style={S.nav}>
-        <div style={S.logo} onClick={() => navigate('/')}>⬡ COSMIX</div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button style={S.btnGhost} onClick={() => navigate('/login')}>Log in</button>
-          <button style={S.btnPrimary} onClick={() => navigate('/register')}>Try free</button>
+        <div style={S.logo} onClick={() => navigate(token ? '/editor' : '/')}>⬡ COSMIX</div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {token ? (
+            <>
+              <span style={{ color: '#64748B', fontSize: 13 }}>{user?.email}</span>
+              <button style={S.btnGhost} onClick={() => navigate('/editor')}>Back to Editor</button>
+            </>
+          ) : (
+            <>
+              <button style={S.btnGhost} onClick={() => navigate('/login')}>Log in</button>
+              <button style={S.btnPrimary} onClick={() => navigate('/register')}>Try free</button>
+            </>
+          )}
         </div>
       </nav>
 
