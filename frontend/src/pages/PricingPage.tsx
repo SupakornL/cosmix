@@ -1,3 +1,4 @@
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 
@@ -50,18 +51,26 @@ const FAQ = [
 export default function PricingPage() {
   const navigate = useNavigate()
   const { token, user } = useAuthStore()
+  const [upgrading, setUpgrading] = React.useState(false)
 
   async function handleUpgrade() {
-    if (!token) { navigate('/register'); return }
+    if (!token) { navigate('/login'); return }
+    setUpgrading(true)
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/payments/create-checkout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      if (data.checkout_url) window.location.href = data.checkout_url
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url
+      } else {
+        alert(data.detail || 'ไม่สามารถสร้าง checkout ได้ กรุณาลองใหม่')
+      }
     } catch (e) {
       alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setUpgrading(false)
     }
   }
 
@@ -129,11 +138,12 @@ export default function PricingPage() {
             </ul>
 
             <button
-              style={p.ctaStyle === 'premium' ? S.btnPremium : p.ctaStyle === 'primary' ? S.btnPrimary : S.btnGhost}
-              onClick={() => navigate('/register')}
+              style={{ ...(p.ctaStyle === 'premium' ? S.btnPremium : p.ctaStyle === 'primary' ? S.btnPrimary : S.btnGhost), opacity: (p.plan === 'pro' && upgrading) ? 0.7 : 1 }}
+              onClick={() => p.plan === 'pro' ? handleUpgrade() : navigate('/register')}
+              disabled={p.plan === 'pro' && upgrading}
               className="plan-btn"
             >
-              {p.cta}
+              {p.plan === 'pro' && upgrading ? 'กำลังโหลด...' : p.cta}
             </button>
           </div>
         ))}
