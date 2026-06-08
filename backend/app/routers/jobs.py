@@ -153,7 +153,7 @@ async def chat_edit(
 
 @router.get("/{job_id}/video")
 def get_video(job_id: str, token: str, db: Session = Depends(get_db)):
-    from fastapi.responses import FileResponse
+    from fastapi.responses import RedirectResponse, FileResponse
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401)
@@ -163,12 +163,31 @@ def get_video(job_id: str, token: str, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id, Job.user_id == user.id).first()
     if not job:
         raise HTTPException(status_code=404)
-    
-    video_path = job.output_s3_key or job.input_s3_key
-    if not video_path or not os.path.exists(video_path):
-        raise HTTPException(status_code=404, detail="Video file not found")
-    
-    return FileResponse(video_path, media_type="video/mp4")
+
+    video_key = job.output_s3_key or job.input_s3_key
+    if not video_key:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    # If it's an R2 key (not a local path), generate presigned URL
+    if not os.path.exists(video_key):
+        try:
+            from ..services.r2_storage import get_presigned_url
+            url = get_presigned_url(video_key, expires_in=7200)
+            return RedirectResponse(url=url, status_code=302)
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Video not accessible: {str(e)}")
+
+    # Fallback: local file with Range support
+    from fastapi import Request
+    file_size = os.path.getsize(video_key)
+    return FileResponse(
+        video_key,
+        media_type="video/mp4",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(file_size),
+        }
+    )
 
 @router.post("/{job_id}/export")
 async def export_video(
