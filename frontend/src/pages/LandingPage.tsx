@@ -208,7 +208,7 @@ export default function LandingPage() {
           </span>
           <br />
           <span style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #60A5FA 50%, #34D399 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            cosmic intelligence
+            Cosmix intelligence
           </span>
         </h1>
 
