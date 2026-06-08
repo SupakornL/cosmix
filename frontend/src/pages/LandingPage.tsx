@@ -41,30 +41,23 @@ const FEATURES = [
 const PLANS = [
   {
     name: 'Trial',
-    price: 'Free',
-    period: '7 days',
-    desc: 'Full access with watermark',
-    features: ['All AI modes', 'Auto subtitle', 'Watermark on export', 'Up to 500MB'],
-    cta: 'Start Free Trial',
+    price: 'ฟรี',
+    period: '5 วัน',
+    desc: 'ทดลองใช้ฟรี ครบทุก feature',
+    features: ['ทุก AI modes', 'Auto subtitle ภาษาไทย+อังกฤษ', 'ไม่จำกัด jobs ใน 5 วัน', 'มี watermark บน output'],
+    cta: 'เริ่มทดลองฟรี',
     featured: false,
+    plan: 'trial',
   },
   {
     name: 'Pro',
-    price: '$19',
-    period: '/month',
-    desc: 'For serious creators',
-    features: ['No watermark', '4K export', '99+ subtitle languages', 'Priority processing', 'Up to 5GB'],
-    cta: 'Get Pro',
+    price: '฿199',
+    period: '/เดือน',
+    desc: 'สำหรับ content creator จริงจัง',
+    features: ['ทุก AI modes ครบ', '100 jobs/เดือน', 'ไม่มี watermark', 'Word-by-word subtitle (TikTok style)', 'Export สูงสุด 1080p'],
+    cta: 'อัพเกรดเป็น Pro',
     featured: true,
-  },
-  {
-    name: 'Team',
-    price: '$49',
-    period: '/month',
-    desc: 'For studios & teams',
-    features: ['Everything in Pro', '5 seats', 'Admin dashboard', 'API access', 'Unlimited storage'],
-    cta: 'Contact Sales',
-    featured: false,
+    plan: 'pro',
   },
 ]
 
@@ -198,7 +191,7 @@ export default function LandingPage() {
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button className="btn-outline" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/login')}>Log in</button>
-          <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/register')}>Try free 7 days</button>
+          <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/register')}>ทดลองฟรี 5 วัน</button>
         </div>
       </nav>
 
