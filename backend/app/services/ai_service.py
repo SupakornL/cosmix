@@ -21,16 +21,36 @@ def tokenize_segment(text: str) -> list[str]:
             if not chunk:
                 continue
             if re.search(r'[\u0E00-\u0E7F]', chunk):
-                # Thai: use PyThaiNLP newmm engine
-                words = word_tokenize(chunk, engine='newmm', keep_whitespace=False)
-                tokens.extend([w for w in words if w.strip()])
+                # Try attacut first (more accurate), fallback to newmm
+                try:
+                    words = word_tokenize(chunk, engine='attacut', keep_whitespace=False)
+                except Exception:
+                    words = word_tokenize(chunk, engine='newmm', keep_whitespace=False)
+                # Filter out empty and single-char noise (punctuation etc.)
+                words = [w for w in words if w.strip() and len(w.strip()) >= 1]
+                # If tokenizer returns the whole chunk as one token, force-split by ~3 chars
+                if len(words) == 1 and len(chunk) > 4:
+                    forced = [chunk[i:i+3] for i in range(0, len(chunk), 3)]
+                    tokens.extend([w for w in forced if w.strip()])
+                else:
+                    tokens.extend(words)
             else:
                 # English/numbers: split by space
                 parts = chunk.split()
                 tokens.extend([p for p in parts if p.strip()])
         return tokens if tokens else text.split()
     except Exception:
-        return text.split()
+        # Last resort: split Thai by 3 chars, non-Thai by space
+        result = []
+        for chunk in re.split(r'([\u0E00-\u0E7F]+)', text):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            if re.search(r'[\u0E00-\u0E7F]', chunk):
+                result.extend([chunk[i:i+3] for i in range(0, len(chunk), 3) if chunk[i:i+3].strip()])
+            else:
+                result.extend(chunk.split())
+        return result if result else [text]
 
 def build_word_timestamps(segments: list) -> list:
     """
@@ -42,7 +62,7 @@ def build_word_timestamps(segments: list) -> list:
         tokens = tokenize_segment(seg["text"])
         if not tokens:
             continue
-        
+
         seg_dur = seg["end"] - seg["start"]
         if seg_dur <= 0:
             continue
@@ -50,7 +70,7 @@ def build_word_timestamps(segments: list) -> list:
         # Weight by character length for more natural timing
         lengths = [max(1, len(t)) for t in tokens]
         total_len = sum(lengths)
-        
+
         pos = seg["start"]
         for token, length in zip(tokens, lengths):
             dur = seg_dur * (length / total_len)
@@ -60,7 +80,7 @@ def build_word_timestamps(segments: list) -> list:
                 "end": round(pos + dur, 3),
             })
             pos += dur
-    
+
     return result
 
 # ─── Transcription ────────────────────────────────────────────
