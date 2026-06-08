@@ -53,7 +53,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
         raise HTTPException(status_code=403, detail="Account disabled")
     
     # Auto-expire trial
-    if user.role == UserRole.trial and user.trial_end and datetime.utcnow() > user.trial_end:
+    if user.role == UserRole.trial and user.trial_end and datetime.utcnow().replace(tzinfo=user.trial_end.tzinfo) > user.trial_end:
         user.role = UserRole.expired
         db.commit()
     
