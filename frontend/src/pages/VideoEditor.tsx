@@ -83,6 +83,24 @@ function fmtSRT(s: number) {
   return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')},${ms.toString().padStart(3,'0')}`
 }
 
+// ─── Thai tokenizer (client-side fallback) ───────────────────
+function tokenizeThai(text: string): string[] {
+  // Split Thai/non-Thai chunks, then split non-Thai by space
+  const chunks = text.split(/([\u0E00-\u0E7F]+)/).filter(c => c.trim())
+  const tokens: string[] = []
+  for (const chunk of chunks) {
+    if (/[\u0E00-\u0E7F]/.test(chunk)) {
+      // Thai: split by common patterns — syllable-based heuristic
+      // Group consonant clusters + vowels together (2-4 chars per token)
+      const thaiTokens = chunk.match(/[\u0E00-\u0E7F]{1,4}/g) || [chunk]
+      tokens.push(...thaiTokens)
+    } else {
+      tokens.push(...chunk.split(/\s+/).filter(t => t.trim()))
+    }
+  }
+  return tokens.length > 0 ? tokens : [text]
+}
+
 // ─── Word deriver — splits text and distributes timing ───────
 function deriveWords(seg: Segment, apiWords?: WordStamp[]): WordStamp[] {
   const text = seg.text.trim()
@@ -90,14 +108,17 @@ function deriveWords(seg: Segment, apiWords?: WordStamp[]): WordStamp[] {
   const dur = seg.end - seg.start
   if (dur <= 0) return []
 
-  // Use API words if available for this segment (most accurate)
+  // Use API words if available — wider window to catch drift
   if (apiWords && apiWords.length > 0) {
-    const segApiWords = apiWords.filter(w => w.start >= seg.start - 0.5 && w.start < seg.end + 0.5)
+    const segApiWords = apiWords.filter(
+      w => w.start >= seg.start - 1.0 && w.start < seg.end + 1.0
+    )
     if (segApiWords.length > 0) return segApiWords
   }
 
-  // Fallback: split by space (works for English, less accurate for Thai)
-  const tokens = text.split(/\s+/).filter(t => t.trim())
+  // Fallback: tokenize (Thai-aware)
+  const isThai = /[\u0E00-\u0E7F]/.test(text)
+  const tokens = isThai ? tokenizeThai(text) : text.split(/\s+/).filter(t => t.trim())
   if (!tokens.length) return [{ word: text, start: seg.start, end: seg.end }]
 
   const lengths = tokens.map(t => Math.max(1, t.length))
@@ -204,7 +225,10 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
 
   // WORD_SINGLE — แสดงทีละคำเดียว
   if (style.displayMode === 'word_single') {
-    const active = segWords.find(w => currentTime >= w.start && currentTime <= w.end) || segWords[0]
+    // Find active word, or last word before currentTime, or first word
+    const active = segWords.find(w => currentTime >= w.start && currentTime <= w.end)
+      || [...segWords].reverse().find(w => currentTime > w.end)
+      || segWords[0]
     if (!active) return null
     const wd = style.allCaps ? active.word.toUpperCase() : active.word
     return (
@@ -222,7 +246,11 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
 
   // WORD_TRAIL — ทีละคำ + คำก่อนหน้า
   if (style.displayMode === 'word_trail') {
-    const activeIdx = segWords.findIndex(w => currentTime >= w.start && currentTime <= w.end)
+    let activeIdx = segWords.findIndex(w => currentTime >= w.start && currentTime <= w.end)
+    if (activeIdx === -1) {
+      // fallback: last word spoken before currentTime
+      activeIdx = [...segWords].map((w, i) => ({ w, i })).filter(({ w }) => currentTime > w.end).pop()?.i ?? 0
+    }
     const showFrom = Math.max(0, activeIdx - 2)
     const visible = segWords.slice(showFrom, activeIdx + 1)
     return (
