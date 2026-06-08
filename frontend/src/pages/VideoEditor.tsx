@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 
@@ -504,7 +504,22 @@ export default function VideoEditor() {
   const [isDragging, setIsDragging] = useState(false)
   const [suggestions, setSuggestions] = useState<any>(null)
 
-  const currentSeg = segments.find(s => currentTime >= s.start && currentTime <= s.end) || null
+  const currentSeg = useMemo(() => {
+    // First try exact match
+    const exact = segments.find(s => currentTime >= s.start && currentTime <= s.end)
+    if (exact) return exact
+    // If paused before first segment or video not started
+    if (segments.length === 0) return null
+    // Find nearest segment (for preview when editing)
+    const nearest = segments.reduce((prev, curr) => {
+      const prevDist = Math.min(Math.abs(currentTime - prev.start), Math.abs(currentTime - prev.end))
+      const currDist = Math.min(Math.abs(currentTime - curr.start), Math.abs(currentTime - curr.end))
+      return currDist < prevDist ? curr : prev
+    })
+    // Only show nearest if within 2 seconds (don't show subtitle in long silent gaps)
+    const dist = Math.min(Math.abs(currentTime - nearest.start), Math.abs(currentTime - nearest.end))
+    return dist <= 2.0 ? nearest : null
+  }, [segments, currentTime])
 
   // Debug: detect re-render loop
   const renderCount = useRef(0)
