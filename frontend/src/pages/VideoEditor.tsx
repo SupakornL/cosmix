@@ -932,21 +932,31 @@ export default function VideoEditor() {
                                 autoFocus
                                 onChange={e => {
                                   const newWord = e.target.value
-                                  setWords(ws => ws.map((x, i) => {
-                                    const allSegWords = ws.filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
-                                    if (x === allSegWords[wi]) return { ...x, word: newWord }
-                                    return x
-                                  }))
-                                  // Update seg text too
-                                  const allSegWords = words.filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
-                                  const newText = allSegWords.map((ww, i) => i === wi ? newWord : ww.word).join('')
-                                  updateSeg(seg.id, { text: newText })
+                                  const targetStart = w.start
+                                  setWords(ws => ws.map(x =>
+                                    x.start === targetStart ? { ...x, word: newWord } : x
+                                  ))
+                                  // Rebuild seg text from updated words
+                                  setWords(ws => {
+                                    const updated = ws.map(x => x.start === targetStart ? { ...x, word: newWord } : x)
+                                    const newText = updated
+                                      .filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
+                                      .map(ww => ww.word).join('')
+                                    updateSeg(seg.id, { text: newText })
+                                    return updated
+                                  })
                                 }}
                               />
                               <button style={{ ...S.iconBtn, color: '#EF4444' }} onClick={() => {
-                                setWords(ws => ws.filter(x => x !== segWords[wi]))
-                                const newText = segWords.filter((_, i) => i !== wi).map(x => x.word).join('')
-                                updateSeg(seg.id, { text: newText })
+                                const targetStart = w.start
+                                setWords(ws => {
+                                  const updated = ws.filter(x => x.start !== targetStart)
+                                  const newText = updated
+                                    .filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
+                                    .map(ww => ww.word).join('')
+                                  updateSeg(seg.id, { text: newText })
+                                  return updated
+                                })
                                 setEditingWordKey(null)
                               }}>✕</button>
                             </div>
@@ -959,7 +969,10 @@ export default function VideoEditor() {
                               <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
                                 {[-0.1, +0.1].map(d => (
                                   <button key={d} style={{ fontSize: 10, color: d > 0 ? '#34D399' : '#F472B6', background: 'rgba(139,92,246,0.06)', border: '0.5px solid rgba(139,92,246,0.15)', borderRadius: 4, padding: '2px 5px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                                    onClick={() => setWords(ws => ws.map(x => x === segWords[wi] ? { ...x, start: round2(x.start + d), end: round2(x.end + d) } : x))}>
+                                    onClick={() => {
+                                      const targetStart = w.start
+                                      setWords(ws => ws.map(x => x.start === targetStart ? { ...x, start: round2(x.start + d), end: round2(x.end + d) } : x))
+                                    }}>
                                     {d > 0 ? '+' : ''}{d}s
                                   </button>
                                 ))}
