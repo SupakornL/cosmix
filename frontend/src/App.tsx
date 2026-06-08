@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage'
 import AdminDashboard from './pages/AdminDashboard'
 import PricingPage from './pages/PricingPage'
 import VideoEditor from './pages/VideoEditor'
+import PaymentSuccess from './pages/PaymentSuccess'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -32,6 +33,7 @@ export default function App() {
       <Route path="/editor/:jobId" element={<ProtectedRoute><VideoEditor /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      <Route path="/payment/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
     </Routes>
   )
 }

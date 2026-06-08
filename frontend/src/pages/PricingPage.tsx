@@ -1,60 +1,42 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../store/auth'
 
 const PLANS = [
   {
     name: 'Trial',
-    price: 'Free',
-    period: '5 days',
+    price: 'ฟรี',
+    period: '5 วัน',
     desc: 'ทดลองใช้ฟรี ครบทุก feature',
     color: '#64748B',
     features: [
       { text: 'ทุก AI modes', ok: true },
-      { text: 'Auto subtitle 15 ภาษา', ok: true },
-      { text: '10 jobs ตลอด trial', ok: true },
-      { text: 'Watermark บน output', ok: false },
-      { text: 'Export สูงสุด 720p', ok: true },
+      { text: 'Auto subtitle ภาษาไทย+อังกฤษ', ok: true },
+      { text: 'ไม่จำกัด jobs ใน 5 วัน', ok: true },
+      { text: 'มี watermark บน output', ok: false },
     ],
-    cta: 'Start Free Trial',
+    cta: 'เริ่มทดลองฟรี',
     featured: false,
     ctaStyle: 'outline',
+    plan: 'trial',
   },
   {
     name: 'Pro',
-    price: '$9',
-    period: '/month',
-    desc: 'สำหรับ creator ทั่วไป',
+    price: '฿199',
+    period: '/เดือน',
+    desc: 'สำหรับ content creator จริงจัง',
     color: '#A78BFA',
     features: [
-      { text: 'Auto Cut + Subtitle', ok: true },
-      { text: 'Auto subtitle 15 ภาษา', ok: true },
-      { text: '50 jobs/เดือน', ok: true },
-      { text: 'ไม่มี watermark', ok: true },
-      { text: 'Export สูงสุด 1080p', ok: true },
-      { text: 'Suggest Edits + Chat to Edit', ok: false },
-      { text: 'Priority processing', ok: false },
-    ],
-    cta: 'Get Pro',
-    featured: false,
-    ctaStyle: 'primary',
-  },
-  {
-    name: 'Premium',
-    price: '$19',
-    period: '/month',
-    desc: 'สำหรับ creator จริงจัง',
-    color: '#34D399',
-    features: [
       { text: 'ทุก AI modes ครบ', ok: true },
-      { text: 'Auto subtitle 15 ภาษา', ok: true },
-      { text: '200 jobs/เดือน', ok: true },
+      { text: 'Auto subtitle ภาษาไทย+อังกฤษ', ok: true },
+      { text: '100 jobs/เดือน', ok: true },
       { text: 'ไม่มี watermark', ok: true },
-      { text: 'Export 4K', ok: true },
-      { text: 'Suggest Edits + Chat to Edit', ok: true },
-      { text: 'Priority processing', ok: true },
+      { text: 'Word-by-word subtitle (TikTok style)', ok: true },
+      { text: 'Export สูงสุด 1080p', ok: true },
     ],
-    cta: 'Get Premium',
+    cta: 'อัพเกรดเป็น Pro',
     featured: true,
-    ctaStyle: 'premium',
+    ctaStyle: 'primary',
+    plan: 'pro',
   },
 ]
 
@@ -67,6 +49,21 @@ const FAQ = [
 
 export default function PricingPage() {
   const navigate = useNavigate()
+  const { token } = useAuthStore()
+
+  async function handleUpgrade() {
+    if (!token) { navigate('/register'); return }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/payments/create-checkout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.checkout_url) window.location.href = data.checkout_url
+    } catch (e) {
+      alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    }
+  }
 
   return (
     <div style={S.wrap}>
