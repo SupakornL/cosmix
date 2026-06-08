@@ -10,10 +10,44 @@ CLAUDE_MODEL = "claude-sonnet-4-5"
 
 # ─── Thai+English Tokenizer ───────────────────────────────────
 def tokenize_segment(text: str) -> list[str]:
-    """Tokenize Thai+English mixed text using PyThaiNLP."""
+    """Tokenize Thai+English mixed text using attacut + pythainlp fallback."""
+
+    def tokenize_thai_chunk(chunk: str) -> list[str]:
+        # Try attacut first (most accurate, learning-based)
+        try:
+            from attacut import tokenize as attacut_tokenize
+            tokens = attacut_tokenize(chunk)
+            tokens = [t for t in tokens if t.strip()]
+            if tokens and not (len(tokens) == 1 and len(chunk) > 4):
+                return tokens
+        except Exception:
+            pass
+
+        # Try pythainlp newmm
+        try:
+            from pythainlp.tokenize import word_tokenize
+            tokens = word_tokenize(chunk, engine='newmm', keep_whitespace=False)
+            tokens = [t for t in tokens if t.strip()]
+            if tokens and not (len(tokens) == 1 and len(chunk) > 4):
+                return tokens
+        except Exception:
+            pass
+
+        # Try TCC (Thai Character Cluster) — inseparable units
+        try:
+            from pythainlp.tokenize import tcc
+            tokens = [t for t in tcc.segment(chunk) if t.strip()]
+            if tokens:
+                return tokens
+        except Exception:
+            pass
+
+        # Absolute fallback: regex TCC-like split
+        tcc_pattern = r'[เแโใไ][ก-ฮ][็-๎]?[ะาิีึื-ุูัo]?[็-๎]?[ก-ฮ]?|[ก-ฮ][็-๎]?[ะาิีึื-ุูัo]?[็-๎]?[ก-ฮ]?[็-๎]?|[ก-ฮ]'
+        tokens = re.findall(tcc_pattern, chunk)
+        return tokens if tokens else list(chunk)
+
     try:
-        from pythainlp.tokenize import word_tokenize
-        # Split into Thai and non-Thai chunks first
         chunks = re.split(r'([\u0E00-\u0E7F]+)', text)
         tokens = []
         for chunk in chunks:
@@ -21,36 +55,12 @@ def tokenize_segment(text: str) -> list[str]:
             if not chunk:
                 continue
             if re.search(r'[\u0E00-\u0E7F]', chunk):
-                # Try attacut first (more accurate), fallback to newmm
-                try:
-                    words = word_tokenize(chunk, engine='attacut', keep_whitespace=False)
-                except Exception:
-                    words = word_tokenize(chunk, engine='newmm', keep_whitespace=False)
-                # Filter out empty and single-char noise (punctuation etc.)
-                words = [w for w in words if w.strip() and len(w.strip()) >= 1]
-                # If tokenizer returns the whole chunk as one token, force-split by ~3 chars
-                if len(words) == 1 and len(chunk) > 4:
-                    forced = [chunk[i:i+3] for i in range(0, len(chunk), 3)]
-                    tokens.extend([w for w in forced if w.strip()])
-                else:
-                    tokens.extend(words)
+                tokens.extend(tokenize_thai_chunk(chunk))
             else:
-                # English/numbers: split by space
-                parts = chunk.split()
-                tokens.extend([p for p in parts if p.strip()])
-        return tokens if tokens else text.split()
+                tokens.extend([p for p in chunk.split() if p.strip()])
+        return tokens if tokens else [text]
     except Exception:
-        # Last resort: split Thai by 3 chars, non-Thai by space
-        result = []
-        for chunk in re.split(r'([\u0E00-\u0E7F]+)', text):
-            chunk = chunk.strip()
-            if not chunk:
-                continue
-            if re.search(r'[\u0E00-\u0E7F]', chunk):
-                result.extend([chunk[i:i+3] for i in range(0, len(chunk), 3) if chunk[i:i+3].strip()])
-            else:
-                result.extend(chunk.split())
-        return result if result else [text]
+        return [text]
 
 def build_word_timestamps(segments: list) -> list:
     """

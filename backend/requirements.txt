@@ -36,4 +36,5 @@ anthropic
 groq
 supervisor
 attacut
+pythainlp
 stripe
