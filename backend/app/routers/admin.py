@@ -81,7 +81,7 @@ def list_users(
                 "total_jobs": u.total_jobs,
                 "total_paid": u.total_paid,
                 "created_at": u.created_at,
-                "days_left": max(0, (u.trial_end - datetime.utcnow()).days) if u.trial_end and u.role == UserRole.trial else None,
+                "days_left": max(0, (u.trial_end - datetime.now(u.trial_end.tzinfo)).days) if u.trial_end and u.role == UserRole.trial else None,
             }
             for u in users
         ]
