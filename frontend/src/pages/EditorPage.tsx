@@ -185,9 +185,24 @@ export default function EditorPage() {
       <nav style={S.nav}>
         <div style={S.navLogo} onClick={() => navigate('/editor')}>⬡ COSMIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {isTrial && (
-            <div style={{...S.trialChip, cursor: 'pointer'}} onClick={() => navigate('/pricing')}>
-              ⏳ Trial — Upgrade to Pro
+          {user?.role === 'pay_user' && (
+            <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: '#34D399', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>
+              ✦ Pro
+            </div>
+          )}
+          {user?.role === 'trial' && (() => {
+            const msLeft = user.trial_end ? new Date(user.trial_end).getTime() - Date.now() : 0
+            const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))
+            const isExpiring = daysLeft <= 2
+            return (
+              <div style={{ background: isExpiring ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)', border: `1px solid ${isExpiring ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.25)'}`, color: isExpiring ? '#FCA5A5' : '#FCD34D', fontSize: 11, padding: '3px 10px', borderRadius: 20, cursor: 'pointer' }} onClick={() => navigate('/pricing')}>
+                {isExpiring ? '⚠' : '⏳'} Trial — {daysLeft > 0 ? `เหลือ ${daysLeft} วัน` : 'หมดวันนี้'} · Upgrade
+              </div>
+            )
+          })()}
+          {user?.role === 'expired' && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#FCA5A5', fontSize: 11, padding: '3px 10px', borderRadius: 20, cursor: 'pointer' }} onClick={() => navigate('/pricing')}>
+              ✗ Trial หมดอายุแล้ว · Upgrade
             </div>
           )}
           <span style={{ color: '#475569', fontSize: 13 }}>{user?.email}</span>
