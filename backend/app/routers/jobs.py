@@ -323,7 +323,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         srt_path = f.name
         f.writelines(ass_lines)
 
-    output_path = video_path.rsplit(".", 1)[0] + "_export.mp4"
+    import time
+    ts = int(time.time())
+    output_path = video_path.rsplit(".", 1)[0] + f"_export_{ts}.mp4"
 
     import subprocess
     cmd = ['ffmpeg', '-i', video_path]
