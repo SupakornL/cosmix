@@ -578,7 +578,7 @@ export default function VideoEditor() {
       v.removeEventListener('play', onPlay)
       v.removeEventListener('pause', onPause)
     }
-  }, [videoUrl])
+  }, []) // Mount once — videoRef.current is stable
 
   useEffect(() => { if (videoRef.current) { videoRef.current.volume = volume; videoRef.current.playbackRate = speed } }, [volume, speed])
 
@@ -1193,7 +1193,18 @@ export default function VideoEditor() {
         {/* CENTER */}
         <div style={S.center}>
           <div style={S.videoWrap} data-video-wrap="1">
-            <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              style={{ ...S.video, filter: buildCSSFilter(filter) }}
+              onClick={togglePlay}
+              onError={() => {
+                // Presigned URL expired — refresh by re-fetching video URL
+                if (jobId && token) {
+                  setVideoUrl(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/video?token=${token}&t=${Date.now()}`)
+                }
+              }}
+            />
             <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={style} />
             {/* Drag overlay — transparent layer on top for dragging subtitle */}
             <div
