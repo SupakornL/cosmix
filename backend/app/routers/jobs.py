@@ -227,19 +227,94 @@ async def export_video(
     speed = body.get("speed", 1)
     volume = body.get("volume", 1)
 
-    with tempfile.NamedTemporaryFile(suffix=".srt", delete=False, mode='w') as f:
+    # Parse style
+    font = subtitle_style.get('fontFamily', 'Sarabun')
+    size = subtitle_style.get('fontSize', 24)
+    color_hex = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
+    bold = 1 if subtitle_style.get('bold', True) else 0
+    italic = 1 if subtitle_style.get('italic', False) else 0
+    position = subtitle_style.get('position', 'bottom')
+    bg_opacity = subtitle_style.get('bgOpacity', 0)
+    bg_color_hex = subtitle_style.get('bgColor', '#000000').lstrip('#').upper()
+    box_style = subtitle_style.get('boxStyle', 'none')
+    box_color_hex = subtitle_style.get('boxColor', '#000000').lstrip('#').upper()
+    outline_on = subtitle_style.get('outline', True)
+    shadow_on = subtitle_style.get('shadow', True)
+
+    font_map = {
+        'Sarabun': 'Sarabun', 'Kanit': 'Kanit', 'Prompt': 'Prompt',
+        'Mitr': 'Mitr', 'Noto Sans Thai': 'NotoSansThai',
+        'Chakra Petch': 'ChakraPetch', 'Bai Jamjuree': 'BaiJamjuree',
+        'Arial': 'Arial', 'Inter': 'Inter', 'Impact': 'Impact',
+    }
+    system_font = font_map.get(font, 'Sarabun')
+
+    # ASS color format: &HAABBGGRR (alpha, blue, green, red)
+    def hex_to_ass(hex_str, alpha=0):
+        h = hex_str.upper().zfill(6)
+        r, g, b = h[0:2], h[2:4], h[4:6]
+        a = format(alpha, '02X')
+        return f"&H{a}{b}{g}{r}"
+
+    primary_color = hex_to_ass(color_hex, 0)
+
+    # Box/background color
+    if box_style != 'none':
+        back_color = hex_to_ass(box_color_hex, 0)
+        border_style = 4  # opaque box
+        outline_val = 8   # padding for box
+        shadow_val = 0
+    elif bg_opacity > 0:
+        bg_alpha = int((1 - bg_opacity) * 255)
+        back_color = hex_to_ass(bg_color_hex, bg_alpha)
+        border_style = 4
+        outline_val = 6
+        shadow_val = 0
+    else:
+        back_color = "&H00000000"
+        border_style = 1
+        outline_val = 2 if outline_on else 0
+        shadow_val = 1 if shadow_on else 0
+
+    # Alignment
+    alignment_map = {'bottom': 2, 'top': 8, 'middle': 5}
+    alignment = alignment_map.get(position, 2)
+    margin_v = 50 if position == 'bottom' else 30
+
+    def fmt_time_ass(s):
+        h, m = int(s // 3600), int((s % 3600) // 60)
+        sec, cs = int(s % 60), int((s % 1) * 100)
+        return f"{h}:{m:02d}:{sec:02d}.{cs:02d}"
+
+    # Write ASS file
+    ass_header = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,{system_font},{size},{primary_color},&H00FFFFFF,&H00000000,{back_color},{bold},{italic},0,0,100,100,0,0,{border_style},{outline_val},{shadow_val},{alignment},10,10,{margin_v},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    ass_lines = [ass_header]
+    for sub in subtitles:
+        start = fmt_time_ass(sub['start'])
+        end = fmt_time_ass(sub['end'])
+        text = str(sub.get('text', '')).replace('\n', '\\N')
+        ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
+
+    with tempfile.NamedTemporaryFile(suffix=".ass", delete=False, mode='w', encoding='utf-8') as f:
         srt_path = f.name
-        for i, sub in enumerate(subtitles, 1):
-            def fmt(s):
-                h,m,sec,ms = int(s//3600),int((s%3600)//60),int(s%60),int((s-int(s))*1000)
-                return f"{h:02d}:{m:02d}:{sec:02d},{ms:03d}"
-            f.write(f"{i}\n{fmt(sub['start'])} --> {fmt(sub['end'])}\n{sub['text']}\n\n")
+        f.writelines(ass_lines)
 
     output_path = video_path.rsplit(".", 1)[0] + "_export.mp4"
 
     import subprocess
     cmd = ['ffmpeg', '-i', video_path]
-    
+
     # Trim
     if trim.get('start', 0) > 0:
         cmd += ['-ss', str(trim['start'])]
@@ -249,53 +324,7 @@ async def export_video(
     # Build filter
     filters = []
     if subtitles:
-        font = subtitle_style.get('fontFamily', 'Sarabun')
-        size = subtitle_style.get('fontSize', 24)
-        color_hex = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
-        bold = 1 if subtitle_style.get('bold', True) else 0
-        italic = 1 if subtitle_style.get('italic', False) else 0
-        position = subtitle_style.get('position', 'bottom')
-        pos_y = subtitle_style.get('posY', -1)
-        bg_opacity = subtitle_style.get('bgOpacity', 0)
-        bg_color_hex = subtitle_style.get('bgColor', '#000000').lstrip('#').upper()
-
-        # ASS alignment: 1=bottom-left, 2=bottom-center, 3=bottom-right
-        #                7=top-left, 8=top-center, 9=top-right, 5=middle-center
-        alignment_map = { 'bottom': 2, 'top': 8, 'middle': 5 }
-        alignment = alignment_map.get(position, 2)
-
-        # MarginV: distance from edge
-        margin_v = 60 if position == 'bottom' else 40
-
-        # Background (box) — ASS BackColour with alpha
-        # opacity 0 = no bg, 1 = fully opaque bg
-        bg_alpha = hex(int((1 - bg_opacity) * 255)).lstrip('0x').upper().zfill(2)
-        back_colour = f"&H{bg_alpha}{bg_color_hex}&"
-
-        # Outline (shadow for readability)
-        outline = subtitle_style.get('outline', True)
-        outline_val = 2 if outline else 0
-        shadow_val = 1 if subtitle_style.get('shadow', True) else 0
-
-        # Font map
-        font_map = {
-            'Sarabun': 'Sarabun', 'Kanit': 'Kanit', 'Prompt': 'Prompt',
-            'Mitr': 'Mitr', 'Noto Sans Thai': 'NotoSansThai',
-            'Chakra Petch': 'ChakraPetch', 'Bai Jamjuree': 'BaiJamjuree',
-            'Arial': 'Arial', 'Inter': 'Inter', 'Impact': 'Impact',
-        }
-        system_font = font_map.get(font, 'Sarabun')
-
-        style_str = (
-            f"FontName={system_font},FontSize={size},"
-            f"PrimaryColour=&H00{color_hex}&,"
-            f"BackColour={back_colour},"
-            f"Bold={bold},Italic={italic},"
-            f"Alignment={alignment},MarginV={margin_v},"
-            f"Outline={outline_val},Shadow={shadow_val},"
-            f"BorderStyle={'3' if bg_opacity > 0 else '1'}"
-        )
-        filters.append(f"subtitles={srt_path}:force_style='{style_str}'")
+        filters.append(f"ass={srt_path}")
     
     if speed != 1:
         filters.append(f"setpts={1/speed}*PTS")
