@@ -203,9 +203,22 @@ async def export_video(
     if not job:
         raise HTTPException(status_code=404)
 
-    video_path = job.input_s3_key
-    if not os.path.exists(video_path):
+    r2_key = job.input_s3_key
+    if not r2_key:
         raise HTTPException(status_code=404, detail="Source video not found")
+
+    # Download from R2 to local tmp if not already local
+    local_dir = "/tmp/cosmix_exports"
+    os.makedirs(local_dir, exist_ok=True)
+    ext = os.path.splitext(r2_key)[1] or ".mp4"
+    video_path = f"{local_dir}/{job_id}_input{ext}"
+
+    if not os.path.exists(video_path):
+        try:
+            from ..services.r2_storage import download_file
+            download_file(r2_key, video_path)
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Could not download source video: {str(e)}")
 
     # Write SRT
     subtitles = body.get("subtitles", [])
