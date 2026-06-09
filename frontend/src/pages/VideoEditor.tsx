@@ -674,14 +674,32 @@ export default function VideoEditor() {
   async function handleExport() {
     setExporting(true)
     try {
+      const wordModes = ['word_single', 'word_trail', 'word_pop', 'karaoke', 'karaoke_color', 'scale_pop', 'scale_pop_bold']
+      const isWordMode = wordModes.includes(style.displayMode)
+
+      // For word modes: convert words array to per-word subtitle segments
+      let exportSubtitles
+      if (isWordMode && words.length > 0) {
+        exportSubtitles = words.map((w, i) => ({
+          id: i + 1,
+          start: w.start,
+          end: w.end,
+          text: w.word,
+        }))
+      } else {
+        exportSubtitles = segments
+      }
+
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: segments }),
+        body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: exportSubtitles }),
       })
       if (res.ok) {
         const blob = await res.blob()
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cosmix_output.mp4'; a.click()
+      } else {
+        alert('Export failed — please try again')
       }
     } finally { setExporting(false) }
   }
