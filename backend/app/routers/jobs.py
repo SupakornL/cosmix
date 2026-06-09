@@ -249,10 +249,22 @@ async def export_video(
     # Build filter
     filters = []
     if subtitles:
-        font = subtitle_style.get('fontFamily', 'Arial')
+        font = subtitle_style.get('fontFamily', 'Sarabun')
         size = subtitle_style.get('fontSize', 24)
-        color = subtitle_style.get('color', '#FFFFFF').replace('#', '&H00') + '&'
-        filters.append(f"subtitles={srt_path}:force_style='FontName={font},FontSize={size}'")
+        color = subtitle_style.get('color', '#FFFFFF').replace('#', '').upper()
+        # Map web font names to system font names available on Railway
+        font_map = {
+            'Sarabun': 'Sarabun',
+            'Kanit': 'Kanit',
+            'Prompt': 'Prompt',
+            'Noto Sans Thai': 'NotoSansThai',
+            'Arial': 'Arial',
+        }
+        system_font = font_map.get(font, 'NotoSansThai')
+        filters.append(
+            f"subtitles={srt_path}:force_style='FontName={system_font},FontSize={size},"
+            f"PrimaryColour=&H00{color}&,Bold=1,Alignment=2,MarginV=30'"
+        )
     
     if speed != 1:
         filters.append(f"setpts={1/speed}*PTS")

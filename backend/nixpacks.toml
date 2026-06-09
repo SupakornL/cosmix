@@ -1,11 +1,15 @@
 [phases.setup]
-nixPkgs = ["python311", "ffmpeg"]
+nixPkgs = ["python311", "ffmpeg", "fontconfig"]
 
 [phases.install]
 cmds = [
   "curl -LsSf https://astral.sh/uv/install.sh | sh",
   "/root/.local/bin/uv venv /app/.venv",
-  "/root/.local/bin/uv pip install -r requirements.txt --python /app/.venv/bin/python"
+  "/root/.local/bin/uv pip install -r requirements.txt --python /app/.venv/bin/python",
+  "mkdir -p /usr/share/fonts/thai",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf' -o /usr/share/fonts/thai/Sarabun-Regular.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf' -o /usr/share/fonts/thai/Sarabun-Bold.ttf",
+  "fc-cache -fv"
 ]
 
 [start]
