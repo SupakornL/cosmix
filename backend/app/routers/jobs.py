@@ -220,6 +220,18 @@ async def export_video(
         except Exception as e:
             raise HTTPException(status_code=404, detail=f"Could not download source video: {str(e)}")
 
+    # Probe video resolution for accurate ASS positioning
+    import subprocess as sp
+    probe = sp.run([
+        'ffprobe', '-v', 'error', '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height',
+        '-of', 'csv=p=0', video_path
+    ], capture_output=True, text=True)
+    try:
+        vid_w, vid_h = [int(x) for x in probe.stdout.strip().split(',')]
+    except Exception:
+        vid_w, vid_h = 1080, 1920  # fallback portrait
+
     # Write SRT
     subtitles = body.get("subtitles", [])
     trim = body.get("trim", {})
@@ -279,7 +291,8 @@ async def export_video(
     # Alignment
     alignment_map = {'bottom': 2, 'top': 8, 'middle': 5}
     alignment = alignment_map.get(position, 2)
-    margin_v = 50 if position == 'bottom' else 30
+    # Scale margin based on video height
+    margin_v = int(vid_h * 0.05) if position == 'bottom' else int(vid_h * 0.03)
 
     def fmt_time_ass(s):
         h, m = int(s // 3600), int((s % 3600) // 60)
@@ -289,8 +302,8 @@ async def export_video(
     # Write ASS file
     ass_header = f"""[Script Info]
 ScriptType: v4.00+
-PlayResX: 1920
-PlayResY: 1080
+PlayResX: {vid_w}
+PlayResY: {vid_h}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
