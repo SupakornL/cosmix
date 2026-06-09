@@ -627,17 +627,6 @@ export default function VideoEditor() {
   function updateSeg(id: number, changes: Partial<Segment>) {
     setSegments(s => {
       const updated = s.map(x => x.id === id ? { ...x, ...changes } : x)
-      const seg = updated.find(x => x.id === id)
-      if (seg) {
-        // Always rebuild words for this segment (text or timing changed)
-        setWords(w => {
-          // Remove old words for this segment
-          const filtered = w.filter(x => !(x.start >= seg.start && x.start < seg.end))
-          // Derive new words from updated segment text (no API words reference)
-          const newWords = deriveWords(seg)
-          return [...filtered, ...newWords].sort((a, b) => a.start - b.start)
-        })
-      }
       triggerAutoSave(updated)
       return updated
     })
