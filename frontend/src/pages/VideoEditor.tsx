@@ -632,7 +632,7 @@ export default function VideoEditor() {
         // Always rebuild words for this segment (text or timing changed)
         setWords(w => {
           // Remove old words for this segment
-          const filtered = w.filter(x => !(x.start >= seg.start - 0.5 && x.start < seg.end + 0.5))
+          const filtered = w.filter(x => !(x.start >= seg.start && x.start < seg.end))
           // Derive new words from updated segment text (no API words reference)
           const newWords = deriveWords(seg)
           return [...filtered, ...newWords].sort((a, b) => a.start - b.start)
@@ -885,7 +885,7 @@ export default function VideoEditor() {
                   <button style={S.chip} onClick={() => setSegments(s => [...s, { id: Date.now(), start: currentTime, end: currentTime+2, text: 'ใหม่' }].sort((a,b)=>a.start-b.start))}>+ เพิ่ม</button>
                 </div>
                 {segments.map(seg => {
-                  const segWords = words.filter(w => w.start >= seg.start - 0.5 && w.start < seg.end + 0.5)
+                  const segWords = words.filter(w => w.start >= seg.start && w.start < seg.end)
                   const isActive = currentSeg?.id === seg.id
                   return (
                     <div key={seg.id} onClick={() => seek(seg.start)}
@@ -940,7 +940,7 @@ export default function VideoEditor() {
                                   setWords(ws => {
                                     const updated = ws.map(x => x.start === targetStart ? { ...x, word: newWord } : x)
                                     const newText = updated
-                                      .filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
+                                      .filter(ww => ww.start >= seg.start && ww.start < seg.end)
                                       .map(ww => ww.word).join('')
                                     updateSeg(seg.id, { text: newText })
                                     return updated
@@ -952,7 +952,7 @@ export default function VideoEditor() {
                                 setWords(ws => {
                                   const updated = ws.filter(x => x.start !== targetStart)
                                   const newText = updated
-                                    .filter(ww => ww.start >= seg.start - 0.5 && ww.start < seg.end + 0.5)
+                                    .filter(ww => ww.start >= seg.start && ww.start < seg.end)
                                     .map(ww => ww.word).join('')
                                   updateSeg(seg.id, { text: newText })
                                   return updated
