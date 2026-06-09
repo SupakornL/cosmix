@@ -232,13 +232,16 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
       || segWords[0]
     if (!active) return null
     const wd = style.allCaps ? active.word.toUpperCase() : active.word
+    const bgAlpha = Math.round(style.bgOpacity * 255).toString(16).padStart(2, '0')
+    const bgStyle = style.boxStyle !== 'none'
+      ? { background: `${style.boxColor}DD`, padding: '4px 16px', borderRadius: style.boxStyle === 'pill' ? 30 : 8 }
+      : style.bgOpacity > 0
+        ? { background: `${style.bgColor}${bgAlpha}`, padding: '4px 12px', borderRadius: 6 }
+        : {}
     return (
       <div style={baseWrap}>
         <span style={{ fontSize: style.fontSize * 1.2, color: style.highlightColor, fontWeight: 'bold',
-          background: style.boxStyle !== 'none' ? `${style.boxColor}DD` : 'transparent',
-          padding: style.boxStyle !== 'none' ? '4px 16px' : undefined,
-          borderRadius: style.boxStyle === 'pill' ? 30 : style.boxStyle !== 'none' ? 8 : 0,
-          display: 'inline-block' }}>
+          display: 'inline-block', ...bgStyle }}>
           {wd}
         </span>
       </div>
@@ -379,9 +382,15 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
   // SCALE POP — คำที่พูดอยู่ใหญ่ขึ้น คำอื่นเล็กลง
   if (style.displayMode === 'scale_pop' || style.displayMode === 'scale_pop_bold') {
     const isBold = style.displayMode === 'scale_pop_bold'
+    const activeIdx = segWords.findIndex(w => currentTime >= w.start && currentTime <= w.end)
+    const centerIdx = activeIdx >= 0 ? activeIdx : segWords.findLastIndex(w => currentTime > w.end)
+    const WINDOW = 2 // show 2 words before and after active
+    const start = Math.max(0, centerIdx - WINDOW)
+    const end = Math.min(segWords.length, centerIdx + WINDOW + 1)
+    const visibleWords = segWords.slice(start, end)
     return (
       <div style={{ ...baseWrap, display: 'flex', flexWrap: 'wrap' as const, justifyContent: 'center', alignItems: 'baseline', gap: 2 }}>
-        {segWords.map((w, i) => {
+        {visibleWords.map((w, i) => {
           const isActive = currentTime >= w.start && currentTime <= w.end
           const isDone = currentTime > w.end
           const wd = style.allCaps ? w.word.toUpperCase() : w.word
@@ -825,7 +834,7 @@ export default function VideoEditor() {
                     style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
                 </div>
 
-                <div style={S.ptitle}>Highlight Color</div>
+                <div style={S.ptitle}>Highlight Color <span style={{fontSize:10,color:"#475569"}}>(word modes)</span></div>
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
                   {COLORS.map(c => (
                     <div key={c} onClick={() => setStyle(s => ({ ...s, highlightColor: c }))}

@@ -251,20 +251,51 @@ async def export_video(
     if subtitles:
         font = subtitle_style.get('fontFamily', 'Sarabun')
         size = subtitle_style.get('fontSize', 24)
-        color = subtitle_style.get('color', '#FFFFFF').replace('#', '').upper()
-        # Map web font names to system font names available on Railway
+        color_hex = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
+        bold = 1 if subtitle_style.get('bold', True) else 0
+        italic = 1 if subtitle_style.get('italic', False) else 0
+        position = subtitle_style.get('position', 'bottom')
+        pos_y = subtitle_style.get('posY', -1)
+        bg_opacity = subtitle_style.get('bgOpacity', 0)
+        bg_color_hex = subtitle_style.get('bgColor', '#000000').lstrip('#').upper()
+
+        # ASS alignment: 1=bottom-left, 2=bottom-center, 3=bottom-right
+        #                7=top-left, 8=top-center, 9=top-right, 5=middle-center
+        alignment_map = { 'bottom': 2, 'top': 8, 'middle': 5 }
+        alignment = alignment_map.get(position, 2)
+
+        # MarginV: distance from edge
+        margin_v = 60 if position == 'bottom' else 40
+
+        # Background (box) — ASS BackColour with alpha
+        # opacity 0 = no bg, 1 = fully opaque bg
+        bg_alpha = hex(int((1 - bg_opacity) * 255)).lstrip('0x').upper().zfill(2)
+        back_colour = f"&H{bg_alpha}{bg_color_hex}&"
+
+        # Outline (shadow for readability)
+        outline = subtitle_style.get('outline', True)
+        outline_val = 2 if outline else 0
+        shadow_val = 1 if subtitle_style.get('shadow', True) else 0
+
+        # Font map
         font_map = {
-            'Sarabun': 'Sarabun',
-            'Kanit': 'Kanit',
-            'Prompt': 'Prompt',
-            'Noto Sans Thai': 'NotoSansThai',
-            'Arial': 'Arial',
+            'Sarabun': 'Sarabun', 'Kanit': 'Kanit', 'Prompt': 'Prompt',
+            'Mitr': 'Mitr', 'Noto Sans Thai': 'NotoSansThai',
+            'Chakra Petch': 'ChakraPetch', 'Bai Jamjuree': 'BaiJamjuree',
+            'Arial': 'Arial', 'Inter': 'Inter', 'Impact': 'Impact',
         }
-        system_font = font_map.get(font, 'NotoSansThai')
-        filters.append(
-            f"subtitles={srt_path}:force_style='FontName={system_font},FontSize={size},"
-            f"PrimaryColour=&H00{color}&,Bold=1,Alignment=2,MarginV=30'"
+        system_font = font_map.get(font, 'Sarabun')
+
+        style_str = (
+            f"FontName={system_font},FontSize={size},"
+            f"PrimaryColour=&H00{color_hex}&,"
+            f"BackColour={back_colour},"
+            f"Bold={bold},Italic={italic},"
+            f"Alignment={alignment},MarginV={margin_v},"
+            f"Outline={outline_val},Shadow={shadow_val},"
+            f"BorderStyle={'3' if bg_opacity > 0 else '1'}"
         )
+        filters.append(f"subtitles={srt_path}:force_style='{style_str}'")
     
     if speed != 1:
         filters.append(f"setpts={1/speed}*PTS")
