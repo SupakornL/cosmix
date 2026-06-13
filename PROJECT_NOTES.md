@@ -77,6 +77,15 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
 5. `ffmpeg -i input -vf "ass=..." output_{timestamp}.mp4` — **output path มี timestamp ทุกครั้ง** ป้องกัน cache เก่า
 6. Return `FileResponse`
 
+### Custom drag position ไม่ตรงกับ export (แก้แล้ว 2026-06-13)
+Editor มีปุ่ม "Drag mode" ให้ลากตำแหน่ง subtitle ไปไหนก็ได้ (`posX`/`posY` เป็น % ของเฟรม,
+จุดศูนย์กลางของ subtitle อยู่ที่ตำแหน่งนั้นพอดีเพราะ CSS ใช้ `translate(-50%,-50%)`)
+แต่ backend export **ไม่เคยอ่าน `posX`/`posY` เลย** — ใช้แค่ `position` (top/middle/bottom)
++ margin_v คงที่ ทำให้ลากไปตรงไหนก็ตาม export ออกมาอยู่ตำแหน่งเดิมเสมอ
+→ แก้โดย: ถ้า `posY !== -1` (มีการลากกำหนดเอง) → ตั้ง ASS alignment เป็น `\an5` (middle-center)
+  แล้วใส่ `\pos(x,y)` ต่อ dialogue ทุกอัน โดย x,y คำนวณจาก `posX%/posY% * vid_w/vid_h`
+  (ตรงกับวิธี CSS ของ editor) — ใช้กับทั้ง text dialogue และ box drawing (สำหรับ pill/rounded)
+
 ### Pill/rounded box export (แก้แล้ว 2026-06-13)
 ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่มี rounded corners ในตัว
 → แก้โดย: เมื่อ `boxStyle` เป็น `rounded_solid` หรือ `pill` จะไม่ใช้ `BorderStyle=4` แล้ว

@@ -303,6 +303,17 @@ async def export_video(
     # Scale margin based on video height
     margin_v = int(vid_h * 0.05) if position == 'bottom' else int(vid_h * 0.03)
 
+    # Custom drag position (editor centers the subtitle block at posX%/posY% via
+    # translate(-50%,-50%)) — match that with ASS \an5 (middle-center) + \pos override.
+    pos_x_pct = subtitle_style.get('posX', 50)
+    pos_y_pct = subtitle_style.get('posY', -1)
+    use_custom_pos = pos_y_pct != -1
+    if use_custom_pos:
+        alignment = 5
+        center_x = vid_w * pos_x_pct / 100
+        center_y = vid_h * pos_y_pct / 100
+        pos_tag = f"\\an5\\pos({center_x:.1f},{center_y:.1f})"
+
     def fmt_time_ass(s):
         h, m = int(s // 3600), int((s % 3600) // 60)
         sec, cs = int(s % 60), int((s % 1) * 100)
@@ -340,12 +351,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             box_h = len(text_lines) * line_h + 2 * pad_y
             radius = box_h / 2 if box_style == 'pill' else size * 0.22
             radius = min(radius, box_w / 2, box_h / 2)
-            box_x = (vid_w - box_w) / 2
-            if alignment == 8:    # top
+            if use_custom_pos:
+                box_x = center_x - box_w / 2
+                box_y = center_y - box_h / 2
+            elif alignment == 8:    # top
+                box_x = (vid_w - box_w) / 2
                 box_y = margin_v
             elif alignment == 5:  # middle
+                box_x = (vid_w - box_w) / 2
                 box_y = (vid_h - box_h) / 2
             else:                 # bottom
+                box_x = (vid_w - box_w) / 2
                 box_y = vid_h - margin_v - box_h
             r, w, h = radius, box_w, box_h
             drawing = (
@@ -357,9 +373,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             box_alpha, box_bgr = box_fill_color[2:4], box_fill_color[4:10]
             override = f"{{\\an7\\pos({box_x:.1f},{box_y:.1f})\\p1\\1a&H{box_alpha}&\\1c&H{box_bgr}&}}{drawing}{{\\p0}}"
             ass_lines.append(f"Dialogue: 0,{start},{end},Box,,0,0,0,,{override}\n")
-            ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text}\n")
+            text_prefix = f"{{{pos_tag}}}" if use_custom_pos else ""
+            ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
         else:
-            ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
+            text_prefix = f"{{{pos_tag}}}" if use_custom_pos else ""
+            ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
 
     with tempfile.NamedTemporaryFile(suffix=".ass", delete=False, mode='w', encoding='utf-8') as f:
         srt_path = f.name
