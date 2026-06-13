@@ -699,10 +699,15 @@ export default function VideoEditor() {
         exportSubtitles = segments
       }
 
+      // Editor renders subtitles at the video element's displayed CSS size, but the
+      // export burns them in at the source video's real resolution — send the displayed
+      // width so the backend can scale font size / box padding to match.
+      const previewWidth = videoRef.current?.getBoundingClientRect().width || 0
+
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: exportSubtitles }),
+        body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: exportSubtitles, previewWidth }),
       })
       if (res.ok) {
         const blob = await res.blob()

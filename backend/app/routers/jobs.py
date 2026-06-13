@@ -242,6 +242,13 @@ async def export_video(
     # Parse style
     font = subtitle_style.get('fontFamily', 'Sarabun')
     size = subtitle_style.get('fontSize', 24)
+
+    # fontSize is in editor CSS px, sized against the displayed video element —
+    # scale it to the source video's real resolution so export matches preview.
+    preview_width = body.get('previewWidth', 0)
+    if preview_width and preview_width > 0:
+        size = size * (vid_w / preview_width)
+
     color_hex = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
     bold = 1 if subtitle_style.get('bold', True) else 0
     italic = 1 if subtitle_style.get('italic', False) else 0
@@ -255,8 +262,8 @@ async def export_video(
 
     font_map = {
         'Sarabun': 'Sarabun', 'Kanit': 'Kanit', 'Prompt': 'Prompt',
-        'Mitr': 'Mitr', 'Noto Sans Thai': 'NotoSansThai',
-        'Chakra Petch': 'ChakraPetch', 'Bai Jamjuree': 'BaiJamjuree',
+        'Mitr': 'Mitr', 'Noto Sans Thai': 'Noto Sans Thai',
+        'Chakra Petch': 'Chakra Petch', 'Bai Jamjuree': 'Bai Jamjuree',
         'Arial': 'Arial', 'Inter': 'Inter', 'Impact': 'Impact',
     }
     system_font = font_map.get(font, 'Sarabun')
@@ -327,8 +334,8 @@ PlayResY: {vid_h}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{system_font},{size},{primary_color},&H00FFFFFF,&H00000000,{back_color},{bold},{italic},0,0,100,100,0,0,{border_style},{outline_val},{shadow_val},{alignment},10,10,{margin_v},1
-Style: Box,{system_font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1
+Style: Default,{system_font},{int(round(size))},{primary_color},&H00FFFFFF,&H00000000,{back_color},{bold},{italic},0,0,100,100,0,0,{border_style},{outline_val},{shadow_val},{alignment},10,10,{margin_v},1
+Style: Box,{system_font},{int(round(size))},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

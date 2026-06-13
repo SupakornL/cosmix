@@ -9,6 +9,18 @@ cmds = [
   "mkdir -p /usr/share/fonts/thai",
   "curl -L 'https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf' -o /usr/share/fonts/thai/Sarabun-Regular.ttf",
   "curl -L 'https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf' -o /usr/share/fonts/thai/Sarabun-Bold.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/kanit/Kanit-Regular.ttf' -o /usr/share/fonts/thai/Kanit-Regular.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/kanit/Kanit-Bold.ttf' -o /usr/share/fonts/thai/Kanit-Bold.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/prompt/Prompt-Regular.ttf' -o /usr/share/fonts/thai/Prompt-Regular.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/prompt/Prompt-Bold.ttf' -o /usr/share/fonts/thai/Prompt-Bold.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/mitr/Mitr-Regular.ttf' -o /usr/share/fonts/thai/Mitr-Regular.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/mitr/Mitr-Bold.ttf' -o /usr/share/fonts/thai/Mitr-Bold.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/chakrapetch/ChakraPetch-Regular.ttf' -o /usr/share/fonts/thai/ChakraPetch-Regular.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/chakrapetch/ChakraPetch-Bold.ttf' -o /usr/share/fonts/thai/ChakraPetch-Bold.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/baijamjuree/BaiJamjuree-Regular.ttf' -o /usr/share/fonts/thai/BaiJamjuree-Regular.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/baijamjuree/BaiJamjuree-Bold.ttf' -o /usr/share/fonts/thai/BaiJamjuree-Bold.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/notosansthai/NotoSansThai%5Bwdth,wght%5D.ttf' -o /usr/share/fonts/thai/NotoSansThai.ttf",
+  "curl -L 'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz,wght%5D.ttf' -o /usr/share/fonts/thai/Inter.ttf",
   "fc-cache -fv"
 ]
 

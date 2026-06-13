@@ -77,6 +77,20 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
 5. `ffmpeg -i input -vf "ass=..." output_{timestamp}.mp4` — **output path มี timestamp ทุกครั้ง** ป้องกัน cache เก่า
 6. Return `FileResponse`
 
+### Font size/box เล็กกว่า preview + font ผิด (แก้แล้ว 2026-06-13)
+2 ปัญหาซ้อนกัน:
+1. **fontSize scale** — `style.fontSize` เป็น CSS px ของ `<video>` element ที่ scale ตาม
+   ขนาดหน้าจอ (responsive, `maxWidth:100%`) แต่ ASS ใช้ `Fontsize` ตรงกับ `PlayResX = vid_w`
+   (ความกว้างวิดีโอจริง เช่น 1080) → ขนาดตัวอักษร/กล่อง ใน export เล็กกว่า preview มาก
+   → แก้โดย frontend ส่ง `previewWidth` (`videoRef.current.getBoundingClientRect().width`)
+   ไปด้วย แล้ว backend scale: `size *= vid_w / previewWidth`
+2. **Font family ไม่ตรง / ไม่มีบน Railway** — `font_map` แมป 'Noto Sans Thai' → 'NotoSansThai'
+   (ไม่มี space) แต่ font family จริงในไฟล์ ttf คือ "Noto Sans Thai" (มี space) ทำให้ libass
+   หา font ไม่เจอเสมอ แก้ชื่อใน `font_map` ให้ตรงกับ TTF family name จริง (Chakra Petch,
+   Bai Jamjuree, Noto Sans Thai มี space ทั้งหมด) + เพิ่มไฟล์ฟอนต์ Kanit/Prompt/Mitr/
+   ChakraPetch/BaiJamjuree/NotoSansThai/Inter ใน `backend/nixpacks.toml`
+   (ก่อนหน้านี้มีแค่ Sarabun ติดตั้งจริง ฟอนต์อื่นใน dropdown fallback หมด)
+
 ### Custom drag position ไม่ตรงกับ export (แก้แล้ว 2026-06-13)
 Editor มีปุ่ม "Drag mode" ให้ลากตำแหน่ง subtitle ไปไหนก็ได้ (`posX`/`posY` เป็น % ของเฟรม,
 จุดศูนย์กลางของ subtitle อยู่ที่ตำแหน่งนั้นพอดีเพราะ CSS ใช้ `translate(-50%,-50%)`)
