@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-import uuid, aiofiles, os
+import uuid, aiofiles, os, re
 from datetime import datetime, timezone
 from pydantic import BaseModel
 from ..core.database import get_db
@@ -295,28 +295,29 @@ async def export_video(
     else:
         pad_x_css, pad_y_css = 16, 4
         radius_css = 30 if box_style == 'pill' else 8
+    # The editor applies a text drop-shadow (textShadow CSS) independent of boxStyle,
+    # so the shadow value should follow shadow_on regardless of which box branch below runs.
+    shadow_val = 2 if shadow_on else 0
     if use_drawn_box:
         back_color = "&H00000000"
         border_style = 1
         outline_val = 0
-        shadow_val = 0
         box_fill_color = hex_to_ass(box_color_hex, 0x22)
     elif box_style != 'none':
         back_color = hex_to_ass(box_color_hex, 0)
         border_style = 4  # opaque box
         outline_val = 8   # padding for box
-        shadow_val = 0
+        shadow_val = 0    # BorderStyle=4 doesn't support a separate text shadow
     elif bg_opacity > 0:
         bg_alpha = int((1 - bg_opacity) * 255)
         back_color = hex_to_ass(bg_color_hex, bg_alpha)
         border_style = 4
         outline_val = 6
-        shadow_val = 0
+        shadow_val = 0    # BorderStyle=4 doesn't support a separate text shadow
     else:
         back_color = "&H00000000"
         border_style = 1
         outline_val = 2 if outline_on else 0
-        shadow_val = 1 if shadow_on else 0
 
     # Alignment
     alignment_map = {'bottom': 2, 'top': 8, 'middle': 5}
@@ -362,9 +363,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         if use_drawn_box:
             # Estimate the text's rendered box and draw a rounded rectangle behind it.
+            # Thai combining vowel/tone marks (e.g. ิ ี ึ ื ุ ู ั ็ ่ ้ ๊ ๋ ์ ํ) stack on the
+            # preceding base character and add no horizontal width, but count toward
+            # len() — exclude them so the width estimate matches the rendered text.
+            thai_combining = re.compile('[ัิ-ฺ็-๎]')
             text_lines = text.split('\\N')
             char_w = size * 0.75
-            text_w = max((len(l) * char_w for l in text_lines), default=0)
+            text_w = max(
+                (len(thai_combining.sub('', l)) * char_w for l in text_lines),
+                default=0,
+            )
             line_h = size * 1.2
             pad_x = pad_x_css * css_scale
             pad_y = pad_y_css * css_scale
