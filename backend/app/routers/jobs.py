@@ -363,7 +363,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         if use_drawn_box:
             # Estimate the text's rendered box and draw a rounded rectangle behind it.
             text_lines = text.split('\\N')
-            char_w = size * 0.62
+            char_w = size * 0.75
             text_w = max((len(l) * char_w for l in text_lines), default=0)
             line_h = size * 1.2
             pad_x = pad_x_css * css_scale
