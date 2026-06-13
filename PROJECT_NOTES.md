@@ -79,8 +79,10 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
 
 ### Thai transcription accuracy + word timing (2026-06-13)
 พี่บอสรายงานว่าทั้ง (1) คำที่ transcribe ผิด/สะกดผิด และ (3) timing ของแต่ละคำไม่ตรงกับที่พูดจริง
-- (1) แก้เบื้องต้น: ตั้ง `speech_model=aai.SpeechModel.best` ใน `transcribe_audio()`
+- (1) แก้เบื้องต้น: ตั้ง `speech_models=["universal-3-pro","universal-2"]` ใน `transcribe_audio()`
   (`backend/app/services/ai_service.py`) — เดิมไม่ได้ระบุ tier ชัดเจน
+  ⚠️ **ระวัง**: ตอนแรกใช้ `speech_model=aai.SpeechModel.best` (param เก่า ถูก deprecate แล้ว)
+  ทำให้ "Processing failed" ทั้งหมด — แก้เป็น `speech_models` (list) แล้วใน commit a1ffed9
   ถ้าหลังจากนี้ความแม่นยำยังไม่พอ ต้องพิจารณาเปลี่ยน ASR provider (เช่น Whisper)
   ซึ่งเป็นงานใหญ่กว่า ต้องคุยแผนก่อนทำ
 - (3) เป็นข้อจำกัดเดิมที่เคยบันทึกไว้ (หัวข้อ 3 — การตัดคำภาษาไทย): AssemblyAI ส่ง
