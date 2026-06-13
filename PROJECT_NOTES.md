@@ -90,6 +90,22 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
   สัดส่วนความยาวตัวอักษร (estimate) — AssemblyAI ไม่มี API ที่ให้ timestamp ต่อคำไทยจริง
   ทางแก้จริงคือ forced-alignment ภายนอก (เช่น wav2vec2-based aligner) ซึ่งเป็นงานใหญ่
 
+### Pill shape เพี้ยนเป็นกล่องเหลี่ยม + ไม่มีเงาตัวหนังสือ (แก้แล้ว 2026-06-13)
+หลังแก้ padding/radius ตาม displayMode (หัวข้อถัดไป) export ดีขึ้นมากแต่ยังมี 2 ปัญหา:
+1. **box ไม่กลมเป็น pill** + ช่องว่างรอบตัวอักษรกว้างเกินไป — ต้นเหตุคือ `text_w` estimate
+   นับ `len(text)` รวม **สัญลักษณ์วรรณยุกต์/สระลอยของภาษาไทย** (ิ ี ึ ื ุ ู ั ็ ่ ้ ๊ ๋ ์ ํ)
+   ซึ่งเป็น combining mark ซ้อนบนตัวพยัญชนะ ไม่กินความกว้างจริง แต่ทำให้ `len()` นับเกิน
+   เช่น "ดิเจ๊ง" = 6 chars แต่กว้างจริงแค่ ~4 ตัว → กล่องกว้าง/สูงเกินจริง ~50% ทำให้ radius
+   ที่คำนวณ (`min(radius_css*scale, box_w/2, box_h/2)`) ไม่ถึง `box_h/2` เลยไม่กลมเป็น pill
+   → แก้โดย strip combining marks ออกก่อนนับ `len()` (`thai_combining` regex ใน
+   `backend/app/routers/jobs.py`)
+2. **ไม่มีเงาตัวหนังสือ** — `shadow_val` ถูก hardcode เป็น `0` เสมอเมื่อ `use_drawn_box`
+   (ลบ ASS Shadow ทิ้งทั้งหมดเพื่อไม่ให้กล่องเดิมของ BorderStyle=4 ไปทับ) แต่ editor มี
+   `textShadow` CSS แยกจาก `boxStyle` โดยสิ้นเชิง (ใส่ shadow ได้แม้ตอนมี box)
+   → แก้โดยตั้ง `shadow_val = 2 if shadow_on else 0` ก่อนแยก branch, แล้วให้เฉพาะ
+   `BorderStyle=4` (solid box / bgOpacity) เท่านั้นที่ override เป็น `0` (เพราะ
+   BorderStyle=4 ไม่รองรับ shadow แยกจาก outline)
+
 ### Pill/rounded box ขนาด+ความโค้งยังไม่ตรง (ปรับเพิ่ม 2026-06-13)
 รอบแรกเดาขนาด padding/radius เป็นสัดส่วนคงที่ของ fontSize ซึ่งไม่ตรงกับ editor จริง
 เพราะ editor ใช้ padding/borderRadius เป็น **CSS px คงที่** (ไม่ scale ตาม fontSize)
@@ -150,7 +166,8 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
-| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed | วาด rounded-rect ด้วย ASS vector drawing, ดูหัวข้อ 4 — ขนาดกล่องเป็น estimate ยังไม่ pixel-perfect |
+| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed | วาด rounded-rect ด้วย ASS vector drawing + แก้ width estimate ให้ตัด combining marks ไทย, ดูหัวข้อ 4 |
+| Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
 | Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 |
 | Thai transcription ผิด/สะกดผิดบางคำ | 🟡 ปรับ speech_model=best แล้ว | ยังขึ้นกับคุณภาพโมเดล AssemblyAI ภาษาไทย — ถ้ายังไม่พอ ต้องพิจารณา ASR อื่น (Whisper ฯลฯ) |
 | Presigned URL (R2) หมดอายุ ~2hr | 🟡 Workaround | user ต้อง refresh หน้าเอง |
@@ -205,4 +222,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-13 — session: pill/rounded box export via ASS vector drawing*
+*Last updated: 2026-06-13 — session: pill shape + text shadow fix for export box drawing*
