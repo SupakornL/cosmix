@@ -108,7 +108,8 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
         "vi": "vi", "id": "id",
     }
 
-    config_kwargs = {}
+    # "best" gives noticeably better Thai accuracy than the "nano" tier
+    config_kwargs = {"speech_model": aai.SpeechModel.best}
     if language != "auto" and language in lang_map:
         config_kwargs["language_code"] = lang_map[language]
     else:

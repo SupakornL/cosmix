@@ -77,6 +77,17 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
 5. `ffmpeg -i input -vf "ass=..." output_{timestamp}.mp4` — **output path มี timestamp ทุกครั้ง** ป้องกัน cache เก่า
 6. Return `FileResponse`
 
+### Thai transcription accuracy + word timing (2026-06-13)
+พี่บอสรายงานว่าทั้ง (1) คำที่ transcribe ผิด/สะกดผิด และ (3) timing ของแต่ละคำไม่ตรงกับที่พูดจริง
+- (1) แก้เบื้องต้น: ตั้ง `speech_model=aai.SpeechModel.best` ใน `transcribe_audio()`
+  (`backend/app/services/ai_service.py`) — เดิมไม่ได้ระบุ tier ชัดเจน
+  ถ้าหลังจากนี้ความแม่นยำยังไม่พอ ต้องพิจารณาเปลี่ยน ASR provider (เช่น Whisper)
+  ซึ่งเป็นงานใหญ่กว่า ต้องคุยแผนก่อนทำ
+- (3) เป็นข้อจำกัดเดิมที่เคยบันทึกไว้ (หัวข้อ 3 — การตัดคำภาษาไทย): AssemblyAI ส่ง
+  timestamp ระดับ phrase ไม่ใช่ระดับคำ เราใช้ PyThaiNLP ตัดคำแล้วหาร duration ตาม
+  สัดส่วนความยาวตัวอักษร (estimate) — AssemblyAI ไม่มี API ที่ให้ timestamp ต่อคำไทยจริง
+  ทางแก้จริงคือ forced-alignment ภายนอก (เช่น wav2vec2-based aligner) ซึ่งเป็นงานใหญ่
+
 ### Pill/rounded box ขนาด+ความโค้งยังไม่ตรง (ปรับเพิ่ม 2026-06-13)
 รอบแรกเดาขนาด padding/radius เป็นสัดส่วนคงที่ของ fontSize ซึ่งไม่ตรงกับ editor จริง
 เพราะ editor ใช้ padding/borderRadius เป็น **CSS px คงที่** (ไม่ scale ตาม fontSize)
@@ -138,7 +149,8 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
 | Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed | วาด rounded-rect ด้วย ASS vector drawing, ดูหัวข้อ 4 — ขนาดกล่องเป็น estimate ยังไม่ pixel-perfect |
-| Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย |
+| Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 |
+| Thai transcription ผิด/สะกดผิดบางคำ | 🟡 ปรับ speech_model=best แล้ว | ยังขึ้นกับคุณภาพโมเดล AssemblyAI ภาษาไทย — ถ้ายังไม่พอ ต้องพิจารณา ASR อื่น (Whisper ฯลฯ) |
 | Presigned URL (R2) หมดอายุ ~2hr | 🟡 Workaround | user ต้อง refresh หน้าเอง |
 | `seeking to: 0` re-render loop | ✅ Fixed | แก้โดยแยก video event-listener effect |
 | Word chip editor accumulate ซ้ำ | ✅ Fixed | ใช้ `word.start` เป็น key, ไม่ rebuild words ใน `updateSeg`/`saveSubtitles` |
