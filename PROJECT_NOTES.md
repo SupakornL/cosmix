@@ -77,10 +77,16 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
 5. `ffmpeg -i input -vf "ass=..." output_{timestamp}.mp4` — **output path มี timestamp ทุกครั้ง** ป้องกัน cache เก่า
 6. Return `FileResponse`
 
-### ⚠️ Known limitation: Pill/rounded box ไม่ได้
-ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่มี rounded corners
-→ Editor preview (CSS, มี border-radius) **ไม่ตรงกับ export** (ASS, สี่เหลี่ยมเหลี่ยม)
-→ วิธีแก้ในอนาคต: ffmpeg `drawtext` (ได้ box สี่เหลี่ยม + padding ดีกว่า ASS แต่ก็ไม่ rounded) หรือ Puppeteer render frame-by-frame (ได้ CSS จริง แต่ช้ามาก ~5-10x realtime)
+### Pill/rounded box export (แก้แล้ว 2026-06-13)
+ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่มี rounded corners ในตัว
+→ แก้โดย: เมื่อ `boxStyle` เป็น `rounded_solid` หรือ `pill` จะไม่ใช้ `BorderStyle=4` แล้ว
+  แทนที่ด้วยการวาด **rounded-rectangle เป็น vector shape (`\p1` drawing + bezier corners)**
+  เป็น Dialogue แยก (style `Box`, layer 0) อยู่หลังข้อความ (style `Default`, layer 1)
+→ ขนาดกล่อง (`box_w`/`box_h`) เป็นการ **ประมาณจากความยาวข้อความ** (`char_w = fontsize * 0.62`)
+  + padding ตาม fontsize — ไม่ใช่ขนาดจริงจาก libass เหมือน BorderStyle=4 เดิม
+  → อาจมี padding ซ้าย-ขวาไม่เท่ากันเล็กน้อยถ้าข้อความยาว/สั้นกว่าที่ประมาณไว้ แต่ตำแหน่งกึ่งกลางถูกต้องเสมอ
+→ `boxStyle = 'solid'` ยังใช้ `BorderStyle=4` เดิม (สี่เหลี่ยมตรงกับ editor อยู่แล้ว ไม่มีปัญหา)
+→ โค้ดอยู่ใน `backend/app/routers/jobs.py` ส่วน export ASS generation (`use_drawn_box`)
 
 ### Font บน Railway
 ต้องติดตั้ง Thai font เอง (nixpacks ไม่มี default) — โหลด Sarabun ใน `nixpacks.toml` ตอน build:
@@ -91,11 +97,11 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-10)
+## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-13)
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
-| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | 🔴 Open | ข้อจำกัด ASS, ดูหัวข้อ 4 |
+| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed | วาด rounded-rect ด้วย ASS vector drawing, ดูหัวข้อ 4 — ขนาดกล่องเป็น estimate ยังไม่ pixel-perfect |
 | Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย |
 | Presigned URL (R2) หมดอายุ ~2hr | 🟡 Workaround | user ต้อง refresh หน้าเอง |
 | `seeking to: 0` re-render loop | ✅ Fixed | แก้โดยแยก video event-listener effect |
@@ -149,4 +155,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-10 — session: export ASS subtitle, Thai font, scale_pop window fix*
+*Last updated: 2026-06-13 — session: pill/rounded box export via ASS vector drawing*

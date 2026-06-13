@@ -271,7 +271,16 @@ async def export_video(
     primary_color = hex_to_ass(color_hex, 0)
 
     # Box/background color
-    if box_style != 'none':
+    # 'rounded_solid' and 'pill' can't be done with ASS BorderStyle=4 (rectangle only),
+    # so we draw the box as a separate rounded-rect vector shape behind the text instead.
+    use_drawn_box = box_style in ('rounded_solid', 'pill')
+    if use_drawn_box:
+        back_color = "&H00000000"
+        border_style = 1
+        outline_val = 0
+        shadow_val = 0
+        box_fill_color = hex_to_ass(box_color_hex, 0x22)
+    elif box_style != 'none':
         back_color = hex_to_ass(box_color_hex, 0)
         border_style = 4  # opaque box
         outline_val = 8   # padding for box
@@ -308,6 +317,7 @@ PlayResY: {vid_h}
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,{system_font},{size},{primary_color},&H00FFFFFF,&H00000000,{back_color},{bold},{italic},0,0,100,100,0,0,{border_style},{outline_val},{shadow_val},{alignment},10,10,{margin_v},1
+Style: Box,{system_font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -317,7 +327,39 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start = fmt_time_ass(sub['start'])
         end = fmt_time_ass(sub['end'])
         text = str(sub.get('text', '')).replace('\n', '\\N')
-        ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
+
+        if use_drawn_box:
+            # Estimate the text's rendered box and draw a rounded rectangle behind it.
+            text_lines = text.split('\\N')
+            char_w = size * 0.62
+            text_w = max((len(l) * char_w for l in text_lines), default=0)
+            line_h = size * 1.35
+            pad_x = size * 0.55
+            pad_y = size * 0.18
+            box_w = text_w + 2 * pad_x
+            box_h = len(text_lines) * line_h + 2 * pad_y
+            radius = box_h / 2 if box_style == 'pill' else size * 0.22
+            radius = min(radius, box_w / 2, box_h / 2)
+            box_x = (vid_w - box_w) / 2
+            if alignment == 8:    # top
+                box_y = margin_v
+            elif alignment == 5:  # middle
+                box_y = (vid_h - box_h) / 2
+            else:                 # bottom
+                box_y = vid_h - margin_v - box_h
+            r, w, h = radius, box_w, box_h
+            drawing = (
+                f"m {r} 0 l {w-r} 0 b {w} 0 {w} 0 {w} {r} "
+                f"l {w} {h-r} b {w} {h} {w} {h} {w-r} {h} "
+                f"l {r} {h} b 0 {h} 0 {h} 0 {h-r} "
+                f"l 0 {r} b 0 0 0 0 {r} 0"
+            )
+            box_alpha, box_bgr = box_fill_color[2:4], box_fill_color[4:10]
+            override = f"{{\\an7\\pos({box_x:.1f},{box_y:.1f})\\p1\\1a&H{box_alpha}&\\1c&H{box_bgr}&}}{drawing}{{\\p0}}"
+            ass_lines.append(f"Dialogue: 0,{start},{end},Box,,0,0,0,,{override}\n")
+            ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text}\n")
+        else:
+            ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
 
     with tempfile.NamedTemporaryFile(suffix=".ass", delete=False, mode='w', encoding='utf-8') as f:
         srt_path = f.name
