@@ -77,6 +77,19 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
 5. `ffmpeg -i input -vf "ass=..." output_{timestamp}.mp4` — **output path มี timestamp ทุกครั้ง** ป้องกัน cache เก่า
 6. Return `FileResponse`
 
+### Pill/rounded box ขนาด+ความโค้งยังไม่ตรง (ปรับเพิ่ม 2026-06-13)
+รอบแรกเดาขนาด padding/radius เป็นสัดส่วนคงที่ของ fontSize ซึ่งไม่ตรงกับ editor จริง
+เพราะ editor ใช้ padding/borderRadius เป็น **CSS px คงที่** (ไม่ scale ตาม fontSize)
+และค่าต่างกันตาม displayMode:
+- word modes (word_single/trail/pop, karaoke, karaoke_color): padding `2px 8px`, radius pill=20/rounded=6
+- scale_pop / scale_pop_bold: padding `4px 12px`, radius pill=30/rounded=4
+- normal/segment อื่นๆ: padding `4px 16px`, radius pill=30/rounded=8
+→ แก้โดยอ่าน `subtitle_style.displayMode` แล้วใช้ค่าตรงตาม mode, คูณด้วย `css_scale = vid_w/previewWidth`
+  เหมือนกับที่ใช้ scale fontSize — radius ใช้ `min(radius_css*scale, box_w/2, box_h/2)`
+  ให้พฤติกรรมเหมือน CSS border-radius (ถ้า radius ใหญ่กว่าครึ่งกล่อง จะกลายเป็น pill อัตโนมัติ)
+→ `text_w` (ความกว้างข้อความ) ยังเป็น estimate (`char_w = fontsize*0.62`) อยู่ — ส่วนนี้ยัง
+  เป็นจุดที่อาจคลาดเคลื่อนได้บ้างถ้าตัวอักษรกว้าง/แคบกว่าที่ประมาณ
+
 ### Font size/box เล็กกว่า preview + font ผิด (แก้แล้ว 2026-06-13)
 2 ปัญหาซ้อนกัน:
 1. **fontSize scale** — `style.fontSize` เป็น CSS px ของ `<video>` element ที่ scale ตาม

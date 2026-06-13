@@ -281,6 +281,20 @@ async def export_video(
     # 'rounded_solid' and 'pill' can't be done with ASS BorderStyle=4 (rectangle only),
     # so we draw the box as a separate rounded-rect vector shape behind the text instead.
     use_drawn_box = box_style in ('rounded_solid', 'pill')
+    css_scale = (vid_w / preview_width) if preview_width else 1
+    display_mode = subtitle_style.get('displayMode', 'normal')
+    # Padding/radius values mirror the CSS the editor actually uses per display mode
+    # (VideoEditor.tsx wordStyle/segment box styles), converted from CSS px to ASS units.
+    word_modes = ('word_single', 'word_trail', 'word_pop', 'karaoke', 'karaoke_color')
+    if display_mode in word_modes:
+        pad_x_css, pad_y_css = 8, 2
+        radius_css = 20 if box_style == 'pill' else 6
+    elif display_mode in ('scale_pop', 'scale_pop_bold'):
+        pad_x_css, pad_y_css = 12, 4
+        radius_css = 30 if box_style == 'pill' else 4
+    else:
+        pad_x_css, pad_y_css = 16, 4
+        radius_css = 30 if box_style == 'pill' else 8
     if use_drawn_box:
         back_color = "&H00000000"
         border_style = 1
@@ -351,13 +365,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text_lines = text.split('\\N')
             char_w = size * 0.62
             text_w = max((len(l) * char_w for l in text_lines), default=0)
-            line_h = size * 1.35
-            pad_x = size * 0.55
-            pad_y = size * 0.18
+            line_h = size * 1.2
+            pad_x = pad_x_css * css_scale
+            pad_y = pad_y_css * css_scale
             box_w = text_w + 2 * pad_x
             box_h = len(text_lines) * line_h + 2 * pad_y
-            radius = box_h / 2 if box_style == 'pill' else size * 0.22
-            radius = min(radius, box_w / 2, box_h / 2)
+            radius = min(radius_css * css_scale, box_w / 2, box_h / 2)
             if use_custom_pos:
                 box_x = center_x - box_w / 2
                 box_y = center_y - box_h / 2
