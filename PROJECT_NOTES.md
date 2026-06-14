@@ -90,6 +90,17 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
   สัดส่วนความยาวตัวอักษร (estimate) — AssemblyAI ไม่มี API ที่ให้ timestamp ต่อคำไทยจริง
   ทางแก้จริงคือ forced-alignment ภายนอก (เช่น wav2vec2-based aligner) ซึ่งเป็นงานใหญ่
 
+### ตัวหนังสือไม่อยู่กึ่งกลาง pill box + box ไม่กลมพอ (แก้แล้ว 2026-06-13)
+หลังแก้ width estimate แล้ว ยังมี 2 จุดเหลื่อม:
+1. **box_h ต่ำเกินไป** — `line_h = size * 1.2` ไม่พอสำหรับภาษาไทยที่มีสระ/วรรณยุกต์ซ้อนบน-ล่าง
+   (ิ ์ ๊ ุ ฯลฯ) ทำให้กล่องเตี้ยกว่าตัวอักษรจริง → แก้เป็น `size * 1.35`
+2. **ข้อความไม่ตรงกึ่งกลางกล่อง** — เดิม text dialogue ใช้ alignment/margin ของ style
+   (เช่น `\an2` bottom) แยกจาก box ที่คำนวณตำแหน่งเองจาก `box_x/box_y` (estimate) —
+   ถ้า estimate คลาดเคลื่อนแม้เล็กน้อย ข้อความจะไม่ตรงกึ่งกลาง box
+   → แก้โดยให้ text dialogue ใช้ `\an5\pos(box_center_x, box_center_y)` ชี้ไปจุดกึ่งกลาง
+   เดียวกันกับ box เสมอ (ทั้ง custom-pos และ position ปกติ) — การันตีว่าตัวหนังสืออยู่
+   กึ่งกลาง box แม้ size estimate จะคลาดเคลื่อนบ้าง
+
 ### Pill shape เพี้ยนเป็นกล่องเหลี่ยม + ไม่มีเงาตัวหนังสือ (แก้แล้ว 2026-06-13)
 หลังแก้ padding/radius ตาม displayMode (หัวข้อถัดไป) export ดีขึ้นมากแต่ยังมี 2 ปัญหา:
 1. **box ไม่กลมเป็น pill** + ช่องว่างรอบตัวอักษรกว้างเกินไป — ต้นเหตุคือ `text_w` estimate
@@ -222,4 +233,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-13 — session: pill shape + text shadow fix for export box drawing*
+*Last updated: 2026-06-13 — session: pill box centering + Thai line-height fix for export*
