@@ -173,21 +173,30 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-13)
+## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-14)
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
 | Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed | วาด rounded-rect ด้วย ASS vector drawing + แก้ width estimate ให้ตัด combining marks ไทย, ดูหัวข้อ 4 |
 | Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
-| Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 |
+| Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 (Apollo research 2026-06-14: MMS/wav2vec2 forced-aligner เป็นทางเลือกที่ดูคุ้มที่สุดถ้าจะทำในอนาคต แต่ยังไม่คุ้มตอนนี้ — ต้อง verify ตัวเลขจริงก่อน) |
 | Thai transcription ผิด/สะกดผิดบางคำ | 🟡 ปรับ speech_model=best แล้ว | ยังขึ้นกับคุณภาพโมเดล AssemblyAI ภาษาไทย — ถ้ายังไม่พอ ต้องพิจารณา ASR อื่น (Whisper ฯลฯ) |
-| Presigned URL (R2) หมดอายุ ~2hr | 🟡 Workaround | user ต้อง refresh หน้าเอง |
+| Presigned URL (R2) หมดอายุ ~2hr | ✅ Fixed (2026-06-14) | Frontend (`VideoEditor.tsx`) refresh `videoUrl` ทุก 50 นาที (ก่อนหมดอายุ) พร้อม restore playback position/state |
 | `seeking to: 0` re-render loop | ✅ Fixed | แก้โดยแยก video event-listener effect |
 | Word chip editor accumulate ซ้ำ | ✅ Fixed | ใช้ `word.start` เป็น key, ไม่ rebuild words ใน `updateSeg`/`saveSubtitles` |
 | Subtitle segment เยอะเกินจอ (word modes) | ✅ Fixed | จัดกลุ่ม 4 คำ/segment ใน backend |
 | Scale Pop ล้นจอ | ✅ Fixed | จำกัดแสดง 5 คำรอบ active word |
 | BG opacity ไม่ทำงานทุก mode | ✅ Fixed | |
 | Export 404 / ดาวน์โหลดวิดีโอไม่ได้ | ✅ Fixed | export endpoint ต้อง download จาก R2 ก่อน |
+| Export `/tmp/cosmix_exports` ไฟล์ค้างไม่ถูกลบ (disk เต็มได้) | ✅ Fixed (2026-06-14) | `jobs.py` ลบ `.ass` + `.mp4` output ผ่าน `BackgroundTasks` (success) หรือ sync (failure, เพราะ `BackgroundTasks` ไม่รันถ้า raise `HTTPException`) |
+| Export ไม่เช็ค ffmpeg exit code | ✅ Fixed (2026-06-14) | เช็ค `returncode` ทุก `subprocess.run`, raise 500 แบบ generic ถ้า fail, และข้าม watermark pass ถ้า export หลักล้มเหลว |
+
+### Code review backlog (Argus Panoptes, 2026-06-14 — ยังไม่ทำ)
+- `subtitle_style`/`subtitles[]` body ของ `/export` เป็น `dict` ไม่มี validation (เช่น `speed=0` → ZeroDivisionError, subtitle ขาด field → KeyError/500) — ควรทำ Pydantic model + validators
+- Export job เดียวกันรันพร้อมกัน 2 ครั้ง อาจ race กันที่ `video_path` ที่ download มา cache ไว้
+- `thai_combining` regex (`jobs.py`) range `ิ-ฺ` รวม "ำ" (sara am) ไปด้วย ทั้งที่ "ำ" กินพื้นที่จริง — อาจทำให้กล่อง subtitle แคบไปสำหรับคำที่มี ำ (คำ/นำ/ทำ)
+- ถ้า R2 upload ล้มเหลวตอน upload วิดีโอ จะเก็บ local `/tmp` path เป็น `input_s3_key` ถาวร (หายหลัง Railway restart)
+- `hex_to_ass` ไม่ validate input color hex (low risk, แค่ visual bug ถ้า input ผิด)
 
 ---
 
