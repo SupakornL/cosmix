@@ -373,7 +373,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 (len(thai_combining.sub('', l)) * char_w for l in text_lines),
                 default=0,
             )
-            line_h = size * 1.2
+            # Thai line-height needs extra room for tall stacked vowels/tone marks
+            # (e.g. ิ์ ๊ ุ) above and below the base line — 1.2x clips them.
+            line_h = size * 1.35
             pad_x = pad_x_css * css_scale
             pad_y = pad_y_css * css_scale
             box_w = text_w + 2 * pad_x
@@ -391,6 +393,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             else:                 # bottom
                 box_x = (vid_w - box_w) / 2
                 box_y = vid_h - margin_v - box_h
+            # Anchor the text dialogue to the same center point as the box, so the
+            # text is always centered inside it regardless of size-estimate drift.
+            box_center_x = box_x + box_w / 2
+            box_center_y = box_y + box_h / 2
             r, w, h = radius, box_w, box_h
             drawing = (
                 f"m {r} 0 l {w-r} 0 b {w} 0 {w} 0 {w} {r} "
@@ -401,7 +407,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             box_alpha, box_bgr = box_fill_color[2:4], box_fill_color[4:10]
             override = f"{{\\an7\\pos({box_x:.1f},{box_y:.1f})\\p1\\1a&H{box_alpha}&\\1c&H{box_bgr}&}}{drawing}{{\\p0}}"
             ass_lines.append(f"Dialogue: 0,{start},{end},Box,,0,0,0,,{override}\n")
-            text_prefix = f"{{{pos_tag}}}" if use_custom_pos else ""
+            text_prefix = f"{{\\an5\\pos({box_center_x:.1f},{box_center_y:.1f})}}"
             ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
         else:
             text_prefix = f"{{{pos_tag}}}" if use_custom_pos else ""
