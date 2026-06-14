@@ -568,10 +568,31 @@ export default function VideoEditor() {
     } finally { setLoading(false) }
   }
 
+  // Presigned R2 URL expires after ~2hr — periodically refresh videoUrl so the
+  // <video> element re-fetches a fresh presigned URL, preserving playback position/state
+  const isRefreshRef = useRef(false)
+  useEffect(() => {
+    if (!jobId || !token) return
+    const REFRESH_INTERVAL = 50 * 60 * 1000 // 50 minutes, well under the 2hr expiry
+    const interval = setInterval(() => {
+      isRefreshRef.current = true
+      setVideoUrl(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/video?token=${token}&_refresh=${Date.now()}`)
+    }, REFRESH_INTERVAL)
+    return () => clearInterval(interval)
+  }, [jobId, token])
+
   useEffect(() => {
     const v = videoRef.current; if (!v) return
     const onTime = () => setCurrentTime(v.currentTime)
     const onMeta = () => {
+      if (isRefreshRef.current) {
+        // Restore playback position/state after a presigned-URL refresh
+        const wasPlaying = playing
+        v.currentTime = currentTime
+        if (wasPlaying) v.play()
+        isRefreshRef.current = false
+        return
+      }
       setDuration(v.duration)
       setTrim({ start: 0, end: v.duration })
     }
