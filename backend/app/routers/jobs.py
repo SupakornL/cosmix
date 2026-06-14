@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -193,6 +193,7 @@ def get_video(job_id: str, token: str, db: Session = Depends(get_db)):
 async def export_video(
     job_id: str,
     body: dict,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -444,19 +445,50 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     if volume != 1:
         cmd += ['-af', f'volume={volume}']
     
+    def _safe_remove(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+    background_tasks.add_task(_safe_remove, srt_path)
+
     if job.has_watermark == "True":
         wm_path = output_path.replace('_export', '_wm')
         cmd += ['-y', output_path]
-        subprocess.run(cmd, capture_output=True)
-        subprocess.run([
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"[export] ffmpeg failed for job {job_id}: {result.stderr}")
+            _safe_remove(srt_path)
+            _safe_remove(output_path)
+            raise HTTPException(status_code=500, detail="Failed to generate video export")
+
+        background_tasks.add_task(_safe_remove, output_path)
+        background_tasks.add_task(_safe_remove, wm_path)
+
+        wm_result = subprocess.run([
             'ffmpeg', '-i', output_path,
             '-vf', "drawtext=text='COSMIX TRIAL':fontcolor=white@0.6:fontsize=20:x=(w-text_w)/2:y=h-th-20:box=1:boxcolor=black@0.4:boxborderw=6",
             '-codec:a', 'copy', '-y', wm_path
-        ], capture_output=True)
+        ], capture_output=True, text=True)
+        if wm_result.returncode != 0:
+            print(f"[export] ffmpeg watermark step failed for job {job_id}: {wm_result.stderr}")
+            _safe_remove(srt_path)
+            _safe_remove(output_path)
+            _safe_remove(wm_path)
+            raise HTTPException(status_code=500, detail="Failed to generate video export")
+
         return FileResponse(wm_path, media_type="video/mp4", filename="cosmix_output.mp4")
     else:
         cmd += ['-y', output_path]
-        subprocess.run(cmd, capture_output=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"[export] ffmpeg failed for job {job_id}: {result.stderr}")
+            _safe_remove(srt_path)
+            _safe_remove(output_path)
+            raise HTTPException(status_code=500, detail="Failed to generate video export")
+        background_tasks.add_task(_safe_remove, output_path)
+
         return FileResponse(output_path, media_type="video/mp4", filename="cosmix_output.mp4")
 
 @router.get("/{job_id}/words")
