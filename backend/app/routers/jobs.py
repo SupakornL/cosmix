@@ -322,6 +322,8 @@ async def export_video(
     # ASS color format: &HAABBGGRR (alpha, blue, green, red)
     def hex_to_ass(hex_str, alpha=0):
         h = hex_str.upper().zfill(6)
+        if not re.fullmatch(r'[0-9A-F]{6}', h):
+            h = 'FFFFFF'
         r, g, b = h[0:2], h[2:4], h[4:6]
         a = format(alpha, '02X')
         return f"&H{a}{b}{g}{r}"

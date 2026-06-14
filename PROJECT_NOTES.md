@@ -194,7 +194,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | Export job เดียวกันรันพร้อมกัน race กันที่ `video_path` | ✅ Fixed (2026-06-14) | ใส่ `asyncio.Lock` ต่อ `job_id` ครอบขั้นตอน download-if-missing |
 | ถ้า R2 upload ล้มเหลว เก็บ local `/tmp` path เป็น `input_s3_key` ถาวร | ✅ Fixed (2026-06-14) | mark job เป็น `failed` ทันที + ลบไฟล์ local ที่ค้าง แทนที่จะ fallback เงียบๆ |
 | `thai_combining` regex อาจรวม "ำ" | ✅ ตรวจแล้วไม่ใช่บัค (2026-06-14) | regex เดิม `[ัิ-ฺ็-๎]` ไม่รวม U+0E33 (ำ) อยู่แล้ว — เพิ่ม comment อธิบายไว้กันสับสนรอบหน้า |
-| `hex_to_ass` ไม่ validate input color hex | 🟡 Open | low risk — แค่ visual bug ถ้า `subtitle_style` ส่ง hex ผิดรูปแบบ ยังไม่ทำ |
+| `hex_to_ass` ไม่ validate input color hex | ✅ Fixed (2026-06-14) | ถ้า hex หลัง `zfill(6)` ไม่ match `[0-9A-F]{6}` (เช่น ผิดรูปแบบ/ยาวเกิน) จะ fallback เป็น `FFFFFF` แทน |
 
 ---
 
@@ -240,4 +240,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-13 — session: pill box centering + Thai line-height fix for export*
+*Last updated: 2026-06-14 — session: export validation/race/upload cleanup + hex_to_ass validation*
