@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, B
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-import uuid, aiofiles, os, re
+import uuid, aiofiles, os, re, asyncio
 from datetime import datetime, timezone
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from ..core.database import get_db
 from ..core.security import decode_token
 from ..models.user import User, UserRole
@@ -17,6 +17,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 UPLOAD_DIR = "/tmp/cosmix_uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Per-job locks to serialize concurrent export requests' download-if-missing step
+_export_locks: dict[str, asyncio.Lock] = {}
+
+def _get_export_lock(job_id: str) -> asyncio.Lock:
+    lock = _export_locks.get(job_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _export_locks[job_id] = lock
+    return lock
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     payload = decode_token(token)
@@ -75,7 +85,27 @@ async def upload_video(
         upload_file(local_path, r2_key)
         os.remove(local_path)  # cleanup local
     except Exception as e:
-        r2_key = local_path  # fallback to local if R2 fails
+        # Don't store the ephemeral local /tmp path as input_s3_key — it won't survive
+        # a Railway restart and would cause confusing "could not download source video"
+        # errors later. Mark the job as failed immediately instead.
+        try:
+            os.remove(local_path)
+        except OSError:
+            pass
+        job = Job(
+            id=job_id,
+            user_id=current_user.id,
+            original_filename=file.filename,
+            input_s3_key=local_path,
+            ai_mode=ai_mode,
+            subtitle_language=subtitle_language,
+            status=JobStatus.failed,
+            error_message=f"Failed to upload video to storage: {str(e)}",
+            has_watermark=current_user.role in [UserRole.trial],
+        )
+        db.add(job)
+        db.commit()
+        raise HTTPException(status_code=502, detail="Failed to upload video to storage. Please try again.")
 
     # Create job record
     job = Job(
@@ -189,10 +219,27 @@ def get_video(job_id: str, token: str, db: Session = Depends(get_db)):
         }
     )
 
+class SubtitleEntry(BaseModel):
+    start: float
+    end: float
+    text: str = ""
+
+class TrimRange(BaseModel):
+    start: float = 0
+    end: float = 0
+
+class ExportRequest(BaseModel):
+    subtitles: list[SubtitleEntry] = []
+    subtitle_style: dict = {}
+    trim: TrimRange = TrimRange()
+    speed: float = Field(default=1.0, gt=0)
+    volume: float = Field(default=1.0, ge=0)
+    previewWidth: float = 0
+
 @router.post("/{job_id}/export")
 async def export_video(
     job_id: str,
-    body: dict,
+    body: ExportRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -214,12 +261,15 @@ async def export_video(
     ext = os.path.splitext(r2_key)[1] or ".mp4"
     video_path = f"{local_dir}/{job_id}_input{ext}"
 
-    if not os.path.exists(video_path):
-        try:
-            from ..services.r2_storage import download_file
-            download_file(r2_key, video_path)
-        except Exception as e:
-            raise HTTPException(status_code=404, detail=f"Could not download source video: {str(e)}")
+    # Serialize the download-if-missing check per job so concurrent export requests
+    # for the same job don't both download/use the file while ffmpeg reads it.
+    async with _get_export_lock(job_id):
+        if not os.path.exists(video_path):
+            try:
+                from ..services.r2_storage import download_file
+                download_file(r2_key, video_path)
+            except Exception as e:
+                raise HTTPException(status_code=404, detail=f"Could not download source video: {str(e)}")
 
     # Probe video resolution for accurate ASS positioning
     import subprocess as sp
@@ -234,11 +284,11 @@ async def export_video(
         vid_w, vid_h = 1080, 1920  # fallback portrait
 
     # Write SRT
-    subtitles = body.get("subtitles", [])
-    trim = body.get("trim", {})
-    subtitle_style = body.get("subtitle_style", {})
-    speed = body.get("speed", 1)
-    volume = body.get("volume", 1)
+    subtitles = body.subtitles
+    trim = body.trim
+    subtitle_style = body.subtitle_style
+    speed = body.speed
+    volume = body.volume
 
     # Parse style
     font = subtitle_style.get('fontFamily', 'Sarabun')
@@ -246,7 +296,7 @@ async def export_video(
 
     # fontSize is in editor CSS px, sized against the displayed video element —
     # scale it to the source video's real resolution so export matches preview.
-    preview_width = body.get('previewWidth', 0)
+    preview_width = body.previewWidth
     if preview_width and preview_width > 0:
         size = size * (vid_w / preview_width)
 
@@ -358,15 +408,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     ass_lines = [ass_header]
     for sub in subtitles:
-        start = fmt_time_ass(sub['start'])
-        end = fmt_time_ass(sub['end'])
-        text = str(sub.get('text', '')).replace('\n', '\\N')
+        start = fmt_time_ass(sub.start)
+        end = fmt_time_ass(sub.end)
+        text = sub.text.replace('\n', '\\N')
 
         if use_drawn_box:
             # Estimate the text's rendered box and draw a rounded rectangle behind it.
             # Thai combining vowel/tone marks (e.g. ิ ี ึ ื ุ ู ั ็ ่ ้ ๊ ๋ ์ ํ) stack on the
             # preceding base character and add no horizontal width, but count toward
             # len() — exclude them so the width estimate matches the rendered text.
+            # Note: ิ-ฺ (U+0E34-U+0E3A) deliberately excludes ำ (sara am, U+0E33),
+            # which is full-width and DOES take horizontal space — only the
+            # combining vowels/tone marks above/below the base character are stripped.
             thai_combining = re.compile('[ัิ-ฺ็-๎]')
             text_lines = text.split('\\N')
             char_w = size * 0.75
@@ -426,10 +479,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     cmd = ['ffmpeg', '-i', video_path]
 
     # Trim
-    if trim.get('start', 0) > 0:
-        cmd += ['-ss', str(trim['start'])]
-    if trim.get('end', 0) > 0:
-        cmd += ['-to', str(trim['end'])]
+    if trim.start > 0:
+        cmd += ['-ss', str(trim.start)]
+    if trim.end > 0:
+        cmd += ['-to', str(trim.end)]
 
     # Build filter
     filters = []
