@@ -190,13 +190,11 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | Export 404 / ดาวน์โหลดวิดีโอไม่ได้ | ✅ Fixed | export endpoint ต้อง download จาก R2 ก่อน |
 | Export `/tmp/cosmix_exports` ไฟล์ค้างไม่ถูกลบ (disk เต็มได้) | ✅ Fixed (2026-06-14) | `jobs.py` ลบ `.ass` + `.mp4` output ผ่าน `BackgroundTasks` (success) หรือ sync (failure, เพราะ `BackgroundTasks` ไม่รันถ้า raise `HTTPException`) |
 | Export ไม่เช็ค ffmpeg exit code | ✅ Fixed (2026-06-14) | เช็ค `returncode` ทุก `subprocess.run`, raise 500 แบบ generic ถ้า fail, และข้าม watermark pass ถ้า export หลักล้มเหลว |
-
-### Code review backlog (Argus Panoptes, 2026-06-14 — ยังไม่ทำ)
-- `subtitle_style`/`subtitles[]` body ของ `/export` เป็น `dict` ไม่มี validation (เช่น `speed=0` → ZeroDivisionError, subtitle ขาด field → KeyError/500) — ควรทำ Pydantic model + validators
-- Export job เดียวกันรันพร้อมกัน 2 ครั้ง อาจ race กันที่ `video_path` ที่ download มา cache ไว้
-- `thai_combining` regex (`jobs.py`) range `ิ-ฺ` รวม "ำ" (sara am) ไปด้วย ทั้งที่ "ำ" กินพื้นที่จริง — อาจทำให้กล่อง subtitle แคบไปสำหรับคำที่มี ำ (คำ/นำ/ทำ)
-- ถ้า R2 upload ล้มเหลวตอน upload วิดีโอ จะเก็บ local `/tmp` path เป็น `input_s3_key` ถาวร (หายหลัง Railway restart)
-- `hex_to_ass` ไม่ validate input color hex (low risk, แค่ visual bug ถ้า input ผิด)
+| `/export` body ไม่มี validation | ✅ Fixed (2026-06-14) | เปลี่ยน `body: dict` → Pydantic `ExportRequest`/`SubtitleEntry`/`TrimRange` — `speed=0` หรือ subtitle ขาด `start`/`end` คืน 422 แทน 500 |
+| Export job เดียวกันรันพร้อมกัน race กันที่ `video_path` | ✅ Fixed (2026-06-14) | ใส่ `asyncio.Lock` ต่อ `job_id` ครอบขั้นตอน download-if-missing |
+| ถ้า R2 upload ล้มเหลว เก็บ local `/tmp` path เป็น `input_s3_key` ถาวร | ✅ Fixed (2026-06-14) | mark job เป็น `failed` ทันที + ลบไฟล์ local ที่ค้าง แทนที่จะ fallback เงียบๆ |
+| `thai_combining` regex อาจรวม "ำ" | ✅ ตรวจแล้วไม่ใช่บัค (2026-06-14) | regex เดิม `[ัิ-ฺ็-๎]` ไม่รวม U+0E33 (ำ) อยู่แล้ว — เพิ่ม comment อธิบายไว้กันสับสนรอบหน้า |
+| `hex_to_ass` ไม่ validate input color hex | 🟡 Open | low risk — แค่ visual bug ถ้า `subtitle_style` ส่ง hex ผิดรูปแบบ ยังไม่ทำ |
 
 ---
 
