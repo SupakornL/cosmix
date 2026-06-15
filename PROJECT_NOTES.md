@@ -90,6 +90,22 @@ AssemblyAI ส่ง timestamp มาเป็น **phrase-level** (ทั้ง
   สัดส่วนความยาวตัวอักษร (estimate) — AssemblyAI ไม่มี API ที่ให้ timestamp ต่อคำไทยจริง
   ทางแก้จริงคือ forced-alignment ภายนอก (เช่น wav2vec2-based aligner) ซึ่งเป็นงานใหญ่
 
+### Export เล็กไปหมด ไม่ได้สัดส่วนกับ preview สำหรับ word_single/scale_pop (แก้แล้ว 2026-06-13)
+หลังแก้ centering แล้ว ยังมีโหมดที่ font/box เล็กกว่า preview อยู่ เพราะ editor มี
+font-size multiplier ต่อ "คำที่ active" ที่ backend ไม่ได้คิดด้วย:
+- `word_single`: span ของคำที่โชว์ใหญ่กว่า `style.fontSize` ถึง **1.2x** (VideoEditor.tsx
+  บรรทัด ~243) แต่ backend export ใช้ `style.fontSize` เฉยๆ
+- `scale_pop` / `scale_pop_bold`: คำ active โชว์ที่ **1.6x** (คำอื่นรอบๆ 0.85x แต่ export
+  ส่งทีละคำ คำนั้นถือว่า active ตลอดช่วงเวลาของมัน) backend ก็ไม่ได้คูณเหมือนกัน
+→ แก้โดยคูณ `size *= 1.2` (word_single) หรือ `size *= 1.6` (scale_pop/scale_pop_bold)
+  ก่อนคูณ `previewWidth` scale
+- เพิ่มเติม: `word_single` เดิมถูกจัดอยู่ใน "word_modes" กลุ่ม padding เล็ก (`8,2`/radius
+  `20,6`) แต่จริงๆ editor ใช้ padding ใหญ่เหมือน normal/segment (`16,4`/radius `30,8`)
+  → แยก `word_single` ออกมาใช้ค่าเดียวกับ normal
+- เพิ่มเติม: `karaoke_color` และ `scale_pop`/`scale_pop_bold` ไม่มี background box ใน
+  editor เลย (gradient text fill / span เปล่า) แต่ backend เคยวาด box ให้ถ้า `boxStyle
+  != 'none'` → แก้ให้ทั้ง 3 mode นี้ไม่วาด box เลย (`no_box_modes`)
+
 ### ตัวหนังสือไม่อยู่กึ่งกลาง pill box + box ไม่กลมพอ (แก้แล้ว 2026-06-13)
 หลังแก้ width estimate แล้ว ยังมี 2 จุดเหลื่อม:
 1. **box_h ต่ำเกินไป** — `line_h = size * 1.2` ไม่พอสำหรับภาษาไทยที่มีสระ/วรรณยุกต์ซ้อนบน-ล่าง
@@ -240,4 +256,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-14 — session: export validation/race/upload cleanup + hex_to_ass validation*
+*Last updated: 2026-06-14 — session: export font-size/box fix for word_single & scale_pop modes*
