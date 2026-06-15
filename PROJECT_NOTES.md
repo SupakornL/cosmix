@@ -193,7 +193,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
-| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed | วาด rounded-rect ด้วย ASS vector drawing + แก้ width estimate ให้ตัด combining marks ไทย, ดูหัวข้อ 4 |
+| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed (verified 2026-06-15) | วาด rounded-rect ด้วย ASS vector drawing + แก้ width/line-height estimate + centering + font-size multiplier ตาม displayMode, ดูหัวข้อ 4 — พี่บอส confirm แล้วว่า export ตรงกับ preview ทั้ง shape/centering/ขนาด/shadow |
 | Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
 | Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 (Apollo research 2026-06-14: MMS/wav2vec2 forced-aligner เป็นทางเลือกที่ดูคุ้มที่สุดถ้าจะทำในอนาคต แต่ยังไม่คุ้มตอนนี้ — ต้อง verify ตัวเลขจริงก่อน) |
 | Thai transcription ผิด/สะกดผิดบางคำ | 🟡 ปรับ speech_model=best แล้ว | ยังขึ้นกับคุณภาพโมเดล AssemblyAI ภาษาไทย — ถ้ายังไม่พอ ต้องพิจารณา ASR อื่น (Whisper ฯลฯ) |
@@ -256,4 +256,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-14 — session: export font-size/box fix for word_single & scale_pop modes*
+*Last updated: 2026-06-15 — export style matching (pill/shadow/size) verified working by พี่บอส*
