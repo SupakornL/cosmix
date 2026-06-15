@@ -12,6 +12,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
+    # Allow Vercel preview deployments (e.g. cosmix-<hash>-bosscosmo-s-projects.vercel.app)
+    # so feature branches can be tested against this backend before merging to main.
+    allow_origin_regex=r"^https://cosmix-[a-z0-9]+-bosscosmo-s-projects\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
