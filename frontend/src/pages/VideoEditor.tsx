@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
+import JassubPreview from '../components/JassubPreview'
 
 // ─── Types ───────────────────────────────────────────────────
 interface Segment { id: number; start: number; end: number; text: string }
@@ -517,6 +518,11 @@ export default function VideoEditor() {
   const [isDragging, setIsDragging] = useState(false)
   const [suggestions, setSuggestions] = useState<any>(null)
 
+  // JASSUB canvas preview (A/B against the DOM/CSS overlay) — renders subtitles
+  // with libass-wasm, the same renderer used by the ffmpeg export pipeline.
+  const [useJassub, setUseJassub] = useState(false)
+  const [assContent, setAssContent] = useState('')
+
   const currentSeg = useMemo(() => {
     // First try exact match
     const exact = segments.find(s => currentTime >= s.start && currentTime <= s.end)
@@ -612,6 +618,32 @@ export default function VideoEditor() {
 
   useEffect(() => { if (videoRef.current) { videoRef.current.volume = volume; videoRef.current.playbackRate = speed } }, [volume, speed])
 
+  // Debounced: ask the backend for the same ASS content the export pipeline would
+  // produce, for the JASSUB canvas preview (only when that A/B mode is enabled).
+  useEffect(() => {
+    if (!useJassub || !jobId || !token) return
+    const v = videoRef.current
+    if (!v || !v.videoWidth || !v.videoHeight) return
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/ass-preview`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subtitle_style: style,
+            subtitles: buildExportSubtitles(),
+            vid_w: v.videoWidth,
+            vid_h: v.videoHeight,
+            previewWidth: 0,
+          }),
+        })
+        if (res.ok) { const d = await res.json(); setAssContent(d.ass) }
+      } catch (e) { console.error('ass-preview fetch failed', e) }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [useJassub, style, words, segments, jobId, token, duration])
+
   function togglePlay() { const v = videoRef.current; if (v) playing ? v.pause() : v.play() }
   function seek(t: number) {
     const v = videoRef.current
@@ -701,24 +733,26 @@ export default function VideoEditor() {
     return segments.map((s, i) => (i+1) + '\n' + fmtSRT(s.start) + ' --> ' + fmtSRT(s.end) + '\n' + s.text).join('\n\n')
   }
 
+  // Same word-mode-vs-segment logic used for export and for the JASSUB live preview,
+  // so both use identical subtitle entries.
+  function buildExportSubtitles() {
+    const wordModes = ['word_single', 'word_trail', 'word_pop', 'karaoke', 'karaoke_color', 'scale_pop', 'scale_pop_bold']
+    const isWordMode = wordModes.includes(style.displayMode)
+    if (isWordMode && words.length > 0) {
+      return words.map((w, i) => ({
+        id: i + 1,
+        start: w.start,
+        end: w.end,
+        text: w.word,
+      }))
+    }
+    return segments
+  }
+
   async function handleExport() {
     setExporting(true)
     try {
-      const wordModes = ['word_single', 'word_trail', 'word_pop', 'karaoke', 'karaoke_color', 'scale_pop', 'scale_pop_bold']
-      const isWordMode = wordModes.includes(style.displayMode)
-
-      // For word modes: convert words array to per-word subtitle segments
-      let exportSubtitles
-      if (isWordMode && words.length > 0) {
-        exportSubtitles = words.map((w, i) => ({
-          id: i + 1,
-          start: w.start,
-          end: w.end,
-          text: w.word,
-        }))
-      } else {
-        exportSubtitles = segments
-      }
+      const exportSubtitles = buildExportSubtitles()
 
       // Editor renders subtitles at the video element's displayed CSS size, but the
       // export burns them in at the source video's real resolution — send the displayed
@@ -1247,7 +1281,14 @@ export default function VideoEditor() {
         <div style={S.center}>
           <div style={S.videoWrap} data-video-wrap="1">
 <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
-            <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={style} />
+            {useJassub
+              ? <JassubPreview videoRef={videoRef} assContent={assContent} />
+              : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={style} />}
+            <button
+              style={{ position: 'absolute', top: 8, right: 8, zIndex: 25, fontSize: 10, padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(167,139,250,0.4)', background: useJassub ? 'rgba(124,58,237,0.6)' : 'rgba(0,0,0,0.4)', color: '#E9D5FF', cursor: 'pointer' }}
+              onClick={() => setUseJassub(v => !v)}
+              title="A/B: toggle between CSS preview and JASSUB (libass) canvas preview"
+            >{useJassub ? '🅰️/🅱️ JASSUB' : '🅰️/🅱️ CSS'}</button>
             {/* Drag overlay — transparent layer on top for dragging subtitle */}
             <div
               style={{ position: 'absolute', inset: 0, zIndex: 20, cursor: isDragging ? 'grabbing' : 'crosshair', opacity: 0, pointerEvents: isDragging ? 'auto' : 'none' }}
