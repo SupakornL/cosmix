@@ -236,60 +236,20 @@ class ExportRequest(BaseModel):
     volume: float = Field(default=1.0, ge=0)
     previewWidth: float = 0
 
-@router.post("/{job_id}/export")
-async def export_video(
-    job_id: str,
-    body: ExportRequest,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    from fastapi.responses import FileResponse
-    import tempfile, json
+class AssPreviewRequest(BaseModel):
+    subtitles: list[SubtitleEntry] = []
+    subtitle_style: dict = {}
+    vid_w: int = 1080
+    vid_h: int = 1920
+    previewWidth: float = 0
 
-    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
-    if not job:
-        raise HTTPException(status_code=404)
+def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: int, preview_width: float = 0) -> str:
+    """Build the full ASS subtitle file content for the given style/subtitles/resolution.
 
-    r2_key = job.input_s3_key
-    if not r2_key:
-        raise HTTPException(status_code=404, detail="Source video not found")
-
-    # Download from R2 to local tmp if not already local
-    local_dir = "/tmp/cosmix_exports"
-    os.makedirs(local_dir, exist_ok=True)
-    ext = os.path.splitext(r2_key)[1] or ".mp4"
-    video_path = f"{local_dir}/{job_id}_input{ext}"
-
-    # Serialize the download-if-missing check per job so concurrent export requests
-    # for the same job don't both download/use the file while ffmpeg reads it.
-    async with _get_export_lock(job_id):
-        if not os.path.exists(video_path):
-            try:
-                from ..services.r2_storage import download_file
-                download_file(r2_key, video_path)
-            except Exception as e:
-                raise HTTPException(status_code=404, detail=f"Could not download source video: {str(e)}")
-
-    # Probe video resolution for accurate ASS positioning
-    import subprocess as sp
-    probe = sp.run([
-        'ffprobe', '-v', 'error', '-select_streams', 'v:0',
-        '-show_entries', 'stream=width,height',
-        '-of', 'csv=p=0', video_path
-    ], capture_output=True, text=True)
-    try:
-        vid_w, vid_h = [int(x) for x in probe.stdout.strip().split(',')]
-    except Exception:
-        vid_w, vid_h = 1080, 1920  # fallback portrait
-
-    # Write SRT
-    subtitles = body.subtitles
-    trim = body.trim
-    subtitle_style = body.subtitle_style
-    speed = body.speed
-    volume = body.volume
-
+    Shared by the export pipeline (which writes this to a temp .ass file for ffmpeg's
+    ass= filter) and the /ass-preview endpoint (which returns it for client-side
+    JASSUB rendering), so both use identical libass output.
+    """
     # Parse style
     font = subtitle_style.get('fontFamily', 'Sarabun')
     size = subtitle_style.get('fontSize', 24)
@@ -306,7 +266,6 @@ async def export_video(
 
     # fontSize is in editor CSS px, sized against the displayed video element —
     # scale it to the source video's real resolution so export matches preview.
-    preview_width = body.previewWidth
     if preview_width and preview_width > 0:
         size = size * (vid_w / preview_width)
 
@@ -393,6 +352,7 @@ async def export_video(
     pos_x_pct = subtitle_style.get('posX', 50)
     pos_y_pct = subtitle_style.get('posY', -1)
     use_custom_pos = pos_y_pct != -1
+    pos_tag = ""
     if use_custom_pos:
         alignment = 5
         center_x = vid_w * pos_x_pct / 100
@@ -479,9 +439,89 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text_prefix = f"{{{pos_tag}}}" if use_custom_pos else ""
             ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
 
+    return "".join(ass_lines)
+
+@router.post("/ass-preview")
+async def ass_preview(
+    body: AssPreviewRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Return the ASS subtitle content for client-side JASSUB preview rendering,
+    using the exact same generation logic as the export pipeline."""
+    ass_content = build_ass_content(
+        subtitle_style=body.subtitle_style,
+        subtitles=body.subtitles,
+        vid_w=body.vid_w,
+        vid_h=body.vid_h,
+        preview_width=body.previewWidth,
+    )
+    return {"ass": ass_content}
+
+@router.post("/{job_id}/export")
+async def export_video(
+    job_id: str,
+    body: ExportRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from fastapi.responses import FileResponse
+    import tempfile, json
+
+    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
+    if not job:
+        raise HTTPException(status_code=404)
+
+    r2_key = job.input_s3_key
+    if not r2_key:
+        raise HTTPException(status_code=404, detail="Source video not found")
+
+    # Download from R2 to local tmp if not already local
+    local_dir = "/tmp/cosmix_exports"
+    os.makedirs(local_dir, exist_ok=True)
+    ext = os.path.splitext(r2_key)[1] or ".mp4"
+    video_path = f"{local_dir}/{job_id}_input{ext}"
+
+    # Serialize the download-if-missing check per job so concurrent export requests
+    # for the same job don't both download/use the file while ffmpeg reads it.
+    async with _get_export_lock(job_id):
+        if not os.path.exists(video_path):
+            try:
+                from ..services.r2_storage import download_file
+                download_file(r2_key, video_path)
+            except Exception as e:
+                raise HTTPException(status_code=404, detail=f"Could not download source video: {str(e)}")
+
+    # Probe video resolution for accurate ASS positioning
+    import subprocess as sp
+    probe = sp.run([
+        'ffprobe', '-v', 'error', '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height',
+        '-of', 'csv=p=0', video_path
+    ], capture_output=True, text=True)
+    try:
+        vid_w, vid_h = [int(x) for x in probe.stdout.strip().split(',')]
+    except Exception:
+        vid_w, vid_h = 1080, 1920  # fallback portrait
+
+    # Write ASS
+    subtitles = body.subtitles
+    trim = body.trim
+    subtitle_style = body.subtitle_style
+    speed = body.speed
+    volume = body.volume
+
+    ass_content = build_ass_content(
+        subtitle_style=subtitle_style,
+        subtitles=subtitles,
+        vid_w=vid_w,
+        vid_h=vid_h,
+        preview_width=body.previewWidth,
+    )
+
     with tempfile.NamedTemporaryFile(suffix=".ass", delete=False, mode='w', encoding='utf-8') as f:
         srt_path = f.name
-        f.writelines(ass_lines)
+        f.write(ass_content)
 
     import time
     ts = int(time.time())
