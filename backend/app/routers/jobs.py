@@ -549,7 +549,13 @@ async def export_video(
 
     if volume != 1:
         cmd += ['-af', f'volume={volume}']
-    
+
+    # Without explicit encoding params ffmpeg falls back to a low-quality default
+    # (libx264 ultrafast-ish settings), making the export noticeably blurrier than
+    # the source — especially visible on the burned-in subtitle text/shadow edges.
+    cmd += ['-c:v', 'libx264', '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac', '-b:a', '192k']
+
     def _safe_remove(path):
         try:
             os.remove(path)
@@ -574,6 +580,7 @@ async def export_video(
         wm_result = subprocess.run([
             'ffmpeg', '-i', output_path,
             '-vf', "drawtext=text='COSMIX TRIAL':fontcolor=white@0.6:fontsize=20:x=(w-text_w)/2:y=h-th-20:box=1:boxcolor=black@0.4:boxborderw=6",
+            '-c:v', 'libx264', '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p',
             '-codec:a', 'copy', '-y', wm_path
         ], capture_output=True, text=True)
         if wm_result.returncode != 0:
