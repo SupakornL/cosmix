@@ -189,12 +189,30 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-14)
+## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-17)
+
+### Export Style Matching (งาน session 2026-06-17)
+
+#### สิ่งที่แก้ใน session นี้:
+
+| Fix | สถานะ | รายละเอียด |
+|---|---|---|
+| Export ภาพเบลอ + ตัวหนังสือไม่คม | ✅ Fixed | ffmpeg export ไม่มี `-crf`/`-preset` → ใช้ default ต่ำ แก้เป็น `-crf 18 -preset medium -pix_fmt yuv420p` ทั้ง main pass และ watermark pass |
+| Export position ผิด (ไม่ตรง CSS preview) | ✅ Fixed | ASS ใช้ `margin_v=5%` ซึ่งต่างจาก CSS ที่ `top:85%` (bottom preset) — เปลี่ยนทุก position ใช้ explicit `\an5\pos(x,y)` จับ center ตรงกับ CSS: bottom=85%, top=8%, middle=50% |
+| Export box กว้างเกิน / กล่องไม่โค้งเป็น pill | ✅ Fixed (ส่วนหนึ่ง) | (1) char_w: เปลี่ยนจาก 0.75 → 0.62 ก่อน แล้ว refactor ให้ frontend วัด `measuredCharWidthPx` จริงจาก `canvas.measureText()` ส่งมาใช้แทน heuristic, (2) bezier corners: เปลี่ยนจาก coincident control points → kappa ≈ 0.5523 quarter-circle approximation ให้โค้งตรงกับ CSS border-radius |
+| Export ไม่มีเงา/outline ตัวหนังสือ (pill/rounded mode) | ✅ Fixed | `shadow_val=2` และ `outline_val=0` ใน `use_drawn_box` branch → 2 ASS units ที่ PlayResX=1080 = ~0.7px display มองไม่เห็น แก้ให้ scale ตาม `css_scale`: `shadow_val = max(2, int(css_scale*2))`, `outline_val = max(1, int(css_scale*1.5))` |
+| A/B CSS toggle ทำให้จอดำ | ✅ Fixed | JASSUB.destroy() เรียก `canvas.remove()` บน React-managed canvas → DOM conflict แก้โดยสร้าง canvas ด้วย `document.createElement` แบบ imperative แทน (React ไม่เป็น owner) |
+| JASSUB preview subtitle ไม่ขึ้น (font load fail) | 🟡 Partial | JASSUB โหลด WASM + worker ได้แล้ว แต่ Prompt font ยัง fail (GitHub raw TTF ถูก block หรือ CORS) — ปัญหา JASSUB preview เป็น experimental feature ยังไม่ถือว่า production-ready |
+
+#### สถานะ open issues:
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
-| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | 🟡 ดีขึ้นมากแล้ว แต่ยังไม่ match สนิท | วาด rounded-rect ด้วย ASS vector drawing + แก้ width/line-height estimate + centering + font-size multiplier ตาม displayMode, ดูหัวข้อ 4 — พี่บอส feedback 2026-06-15 ว่ายังไม่ match สนิท (กำลังหาว่าจุดไหน) |
-| Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
+| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | 🟡 ดีขึ้นมากแล้ว ยังมีจุดปรับ | ดูหัวข้อ 4 ทั้งหมด — ตัวอักษรยังเล็กกว่า preview เล็กน้อย (อาจเป็น display scale artifact ไม่ใช่ bug จริง) — ส่วนเงาและ box shape แก้แล้ว session 2026-06-17 |
+| `job.output_s3_key` เก็บ local path แทน R2 key | 🔴 Open | `tasks.py:128` เก็บ `/tmp/...` path ลง `output_s3_key` แทน R2 key ที่ควร upload ก่อน → วิดีโอ output หายหมดหลัง Railway restart, `get_video` ทำ presigned URL ที่ malformed (`cosmix//tmp/...`) → 404 ต้องแก้ให้ `tasks.py` upload output ขึ้น R2 แล้วเก็บ R2 key ก่อน |
+| Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย |
+| Thai transcription ผิด/สะกดผิดบางคำ | 🟡 ปรับ speech_model=best แล้ว | ยังขึ้นกับคุณภาพโมเดล |
+| JASSUB feature/jassub-preview branch | 🟡 In progress | WASM/worker โหลดได้แล้ว แต่ font load จาก GitHub raw ยังมีปัญหา — ยังไม่ ready merge to main |
 | Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 (Apollo research 2026-06-14: MMS/wav2vec2 forced-aligner เป็นทางเลือกที่ดูคุ้มที่สุดถ้าจะทำในอนาคต แต่ยังไม่คุ้มตอนนี้ — ต้อง verify ตัวเลขจริงก่อน) |
 | Thai transcription ผิด/สะกดผิดบางคำ | 🟡 ปรับ speech_model=best แล้ว | ยังขึ้นกับคุณภาพโมเดล AssemblyAI ภาษาไทย — ถ้ายังไม่พอ ต้องพิจารณา ASR อื่น (Whisper ฯลฯ) |
 | Presigned URL (R2) หมดอายุ ~2hr | ✅ Fixed (2026-06-14) | Frontend (`VideoEditor.tsx`) refresh `videoUrl` ทุก 50 นาที (ก่อนหมดอายุ) พร้อม restore playback position/state |
@@ -256,4 +274,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-15 — export style matching: better but still not pixel-matching preview, investigating*
+*Last updated: 2026-06-17 — export quality fixes (crf18, kappa bezier, scaled shadow/outline, measured char width, position matching)*
