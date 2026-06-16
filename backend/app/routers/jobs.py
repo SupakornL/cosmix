@@ -235,6 +235,7 @@ class ExportRequest(BaseModel):
     speed: float = Field(default=1.0, gt=0)
     volume: float = Field(default=1.0, ge=0)
     previewWidth: float = 0
+    measuredCharWidthPx: float = 0
 
 class AssPreviewRequest(BaseModel):
     subtitles: list[SubtitleEntry] = []
@@ -243,7 +244,7 @@ class AssPreviewRequest(BaseModel):
     vid_h: int = 1920
     previewWidth: float = 0
 
-def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: int, preview_width: float = 0) -> str:
+def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: int, preview_width: float = 0, measured_char_width_px: float = 0) -> str:
     """Build the full ASS subtitle file content for the given style/subtitles/resolution.
 
     Shared by the export pipeline (which writes this to a temp .ass file for ffmpeg's
@@ -394,9 +395,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # combining vowels/tone marks above/below the base character are stripped.
             thai_combining = re.compile('[ัิ-ฺ็-๎]')
             text_lines = text.split('\\N')
-            # 0.62 empirically matches Thai font glyph widths better than 0.75
-            # (Thai characters like ง า ่ are narrower than typical Latin at same size).
-            char_w = size * 0.62
+            # Use browser-measured char width (canvas.measureText) when available;
+            # fall back to 0.62x heuristic for Thai fonts.
+            if measured_char_width_px > 0:
+                char_w = measured_char_width_px * css_scale
+            else:
+                char_w = size * 0.62
             text_w = max(
                 (len(thai_combining.sub('', l)) * char_w for l in text_lines),
                 default=0,
@@ -510,6 +514,7 @@ async def export_video(
         vid_w=vid_w,
         vid_h=vid_h,
         preview_width=body.previewWidth,
+        measured_char_width_px=body.measuredCharWidthPx,
     )
 
     with tempfile.NamedTemporaryFile(suffix=".ass", delete=False, mode='w', encoding='utf-8') as f:
