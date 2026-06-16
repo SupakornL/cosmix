@@ -754,15 +754,27 @@ export default function VideoEditor() {
     try {
       const exportSubtitles = buildExportSubtitles()
 
-      // Editor renders subtitles at the video element's displayed CSS size, but the
-      // export burns them in at the source video's real resolution — send the displayed
-      // width so the backend can scale font size / box padding to match.
       const previewWidth = videoRef.current?.getBoundingClientRect().width || 0
+
+      // Measure actual average character width in CSS pixels using canvas 2d so
+      // the backend can draw pill/rounded boxes that match exactly what the browser renders,
+      // rather than relying on the 0.62x font-size heuristic (which is font-specific).
+      let measuredCharWidthPx = 0
+      try {
+        const tmpCanvas = document.createElement('canvas')
+        const ctx = tmpCanvas.getContext('2d')
+        if (ctx) {
+          const weight = style.bold ? '700' : '400'
+          ctx.font = `${weight} ${style.fontSize}px "${style.fontFamily}"`
+          const sample = 'กขคงจชนมรสตยวอเแโใไา'
+          measuredCharWidthPx = ctx.measureText(sample).width / sample.length
+        }
+      } catch (_) {}
 
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: exportSubtitles, previewWidth }),
+        body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: exportSubtitles, previewWidth, measuredCharWidthPx }),
       })
       if (res.ok) {
         const blob = await res.blob()

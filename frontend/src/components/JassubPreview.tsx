@@ -7,8 +7,6 @@ import wasmUrl from 'jassub/dist/wasm/jassub-worker.wasm?url'
 // @ts-ignore
 import modernWasmUrl from 'jassub/dist/wasm/jassub-worker-modern.wasm?url'
 
-// Same Thai/Latin fonts baked into the export pipeline (backend/nixpacks.toml) so
-// JASSUB's canvas preview renders text with the exact same glyphs as the export.
 const AVAILABLE_FONTS: Record<string, string> = {
   'sarabun': 'https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf',
   'kanit': 'https://github.com/google/fonts/raw/main/ofl/kanit/Kanit-Regular.ttf',
@@ -35,48 +33,61 @@ interface Props {
   assContent: string
 }
 
-// Renders subtitles onto a canvas overlay using libass-wasm (JASSUB), so the live
-// preview uses the exact same renderer as the ffmpeg export pipeline.
 export default function JassubPreview({ videoRef, assContent }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const instRef = useRef<JASSUB | null>(null)
 
   useEffect(() => {
     const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas) return
+    if (!video) return
 
-    const inst = new JASSUB({
-      video,
-      canvas,
-      subContent: assContent || EMPTY_ASS,
-      workerUrl,
-      wasmUrl,
-      modernWasmUrl,
-      availableFonts: AVAILABLE_FONTS,
-      fonts: [AVAILABLE_FONTS['sarabun']],
-      fallbackFont: 'sarabun',
-      prescaleFactor: 1,
-    } as any)
-    instRef.current = inst
+    // Create canvas imperatively so JASSUB's destroy() → canvas.remove() doesn't
+    // conflict with React's DOM reconciliation (React never owns this element).
+    const canvas = document.createElement('canvas')
+    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:18'
+    video.parentElement?.appendChild(canvas)
+
+    let inst: JASSUB | null = null
+    let destroyed = false
+
+    try {
+      inst = new JASSUB({
+        video,
+        canvas,
+        subContent: assContent || EMPTY_ASS,
+        workerUrl,
+        wasmUrl,
+        modernWasmUrl,
+        availableFonts: AVAILABLE_FONTS,
+        fonts: [AVAILABLE_FONTS['sarabun']],
+        fallbackFont: 'sarabun',
+        prescaleFactor: 1,
+      } as any)
+
+      if (!destroyed) {
+        instRef.current = inst
+      } else {
+        inst.destroy()
+      }
+    } catch (e) {
+      console.error('JASSUB init failed:', e)
+      canvas.remove()
+    }
 
     return () => {
+      destroyed = true
       instRef.current = null
-      inst.destroy()
+      try { inst?.destroy() } catch (_) { canvas.remove() }
     }
-  }, [videoRef.current])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (instRef.current && assContent) {
+    if (!instRef.current || !assContent) return
+    try {
       instRef.current.renderer.setTrack(assContent)
       instRef.current.resize()
-    }
+    } catch (_) {}
   }, [assContent])
 
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 18 }}
-    />
-  )
+  // Canvas is managed imperatively above — nothing to render here.
+  return null
 }
