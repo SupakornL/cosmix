@@ -318,13 +318,15 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         # word_single and normal/segment modes both use the larger box padding
         pad_x_css, pad_y_css = 16, 4
         radius_css = 30 if box_style == 'pill' else 8
-    # The editor applies a text drop-shadow (textShadow CSS) independent of boxStyle,
-    # so the shadow value should follow shadow_on regardless of which box branch below runs.
-    shadow_val = 2 if shadow_on else 0
+    # CSS applies textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 3px rgba(0,0,0,0.8)'
+    # Scale both shadow and outline by css_scale so they stay proportionally visible
+    # at the export resolution (2 ASS units in PlayResX=1080 ≈ 0.7 display px — invisible).
+    shadow_val = max(2, int(css_scale * 2)) if shadow_on else 0
     if use_drawn_box:
         back_color = "&H00000000"
         border_style = 1
-        outline_val = 0
+        # Add a scaled outline to approximate the CSS multi-direction textShadow glow.
+        outline_val = max(1, int(css_scale * 1.5)) if outline_on else 0
         box_fill_color = hex_to_ass(box_color_hex, 0x22)
     elif box_style != 'none' and display_mode not in no_box_modes:
         back_color = hex_to_ass(box_color_hex, 0)
