@@ -421,11 +421,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             box_center_x = box_x + box_w / 2
             box_center_y = box_y + box_h / 2
             r, w, h = radius, box_w, box_h
+            # Cubic bezier quarter-circle approximation (kappa ≈ 0.5523).
+            # Coincident control points (b w 0 w 0 w r) produce angular corners;
+            # the kappa form matches CSS border-radius visually.
+            k = r * 0.5523
             drawing = (
-                f"m {r} 0 l {w-r} 0 b {w} 0 {w} 0 {w} {r} "
-                f"l {w} {h-r} b {w} {h} {w} {h} {w-r} {h} "
-                f"l {r} {h} b 0 {h} 0 {h} 0 {h-r} "
-                f"l 0 {r} b 0 0 0 0 {r} 0"
+                f"m {r:.1f} 0 l {w-r:.1f} 0 "
+                f"b {w-r+k:.1f} 0 {w:.1f} {k:.1f} {w:.1f} {r:.1f} "
+                f"l {w:.1f} {h-r:.1f} "
+                f"b {w:.1f} {h-r+k:.1f} {w-r+k:.1f} {h:.1f} {w-r:.1f} {h:.1f} "
+                f"l {r:.1f} {h:.1f} "
+                f"b {r-k:.1f} {h:.1f} 0 {h-r+k:.1f} 0 {h-r:.1f} "
+                f"l 0 {r:.1f} "
+                f"b 0 {r-k:.1f} {r-k:.1f} 0 {r:.1f} 0"
             )
             box_alpha, box_bgr = box_fill_color[2:4], box_fill_color[4:10]
             override = f"{{\\an7\\pos({box_x:.1f},{box_y:.1f})\\p1\\1a&H{box_alpha}&\\1c&H{box_bgr}&}}{drawing}{{\\p0}}"
