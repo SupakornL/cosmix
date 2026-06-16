@@ -341,23 +341,23 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         border_style = 1
         outline_val = 2 if outline_on else 0
 
-    # Alignment
-    alignment_map = {'bottom': 2, 'top': 8, 'middle': 5}
-    alignment = alignment_map.get(position, 2)
-    # Scale margin based on video height
-    margin_v = int(vid_h * 0.05) if position == 'bottom' else int(vid_h * 0.03)
+    # CSS SubtitleRenderer places the subtitle center at these % from top of the video
+    # element (position: absolute; top: X%; transform: translate(-50%,-50%)).
+    # Use \an5\pos() for all positions so ASS center matches CSS center exactly.
+    preset_center_y_pct = {'bottom': 0.85, 'top': 0.08, 'middle': 0.50}
+    alignment = 5
+    margin_v = 0  # unused when \pos is always explicit
+    center_x = vid_w / 2
+    center_y = vid_h * preset_center_y_pct.get(position, 0.85)
 
-    # Custom drag position (editor centers the subtitle block at posX%/posY% via
-    # translate(-50%,-50%)) — match that with ASS \an5 (middle-center) + \pos override.
     pos_x_pct = subtitle_style.get('posX', 50)
     pos_y_pct = subtitle_style.get('posY', -1)
     use_custom_pos = pos_y_pct != -1
-    pos_tag = ""
     if use_custom_pos:
-        alignment = 5
         center_x = vid_w * pos_x_pct / 100
         center_y = vid_h * pos_y_pct / 100
-        pos_tag = f"\\an5\\pos({center_x:.1f},{center_y:.1f})"
+
+    pos_tag = f"\\an5\\pos({center_x:.1f},{center_y:.1f})"
 
     def fmt_time_ass(s):
         h, m = int(s // 3600), int((s % 3600) // 60)
@@ -394,7 +394,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # combining vowels/tone marks above/below the base character are stripped.
             thai_combining = re.compile('[ัิ-ฺ็-๎]')
             text_lines = text.split('\\N')
-            char_w = size * 0.75
+            # 0.62 empirically matches Thai font glyph widths better than 0.75
+            # (Thai characters like ง า ่ are narrower than typical Latin at same size).
+            char_w = size * 0.62
             text_w = max(
                 (len(thai_combining.sub('', l)) * char_w for l in text_lines),
                 default=0,
@@ -407,18 +409,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             box_w = text_w + 2 * pad_x
             box_h = len(text_lines) * line_h + 2 * pad_y
             radius = min(radius_css * css_scale, box_w / 2, box_h / 2)
-            if use_custom_pos:
-                box_x = center_x - box_w / 2
-                box_y = center_y - box_h / 2
-            elif alignment == 8:    # top
-                box_x = (vid_w - box_w) / 2
-                box_y = margin_v
-            elif alignment == 5:  # middle
-                box_x = (vid_w - box_w) / 2
-                box_y = (vid_h - box_h) / 2
-            else:                 # bottom
-                box_x = (vid_w - box_w) / 2
-                box_y = vid_h - margin_v - box_h
+            # All positions now use center_x/center_y (set above from CSS % mapping)
+            box_x = center_x - box_w / 2
+            box_y = center_y - box_h / 2
             # Anchor the text dialogue to the same center point as the box, so the
             # text is always centered inside it regardless of size-estimate drift.
             box_center_x = box_x + box_w / 2
@@ -436,7 +429,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text_prefix = f"{{\\an5\\pos({box_center_x:.1f},{box_center_y:.1f})}}"
             ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
         else:
-            text_prefix = f"{{{pos_tag}}}" if use_custom_pos else ""
+            text_prefix = f"{{{pos_tag}}}"
             ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
 
     return "".join(ass_lines)
