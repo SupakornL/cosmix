@@ -755,7 +755,6 @@ export default function VideoEditor() {
       const exportSubtitles = buildExportSubtitles()
 
       const previewWidth = videoRef.current?.getBoundingClientRect().width || 0
-      console.log('[Export] previewWidth:', previewWidth, 'videoRect:', videoRef.current?.getBoundingClientRect())
 
       // Measure actual average character width in CSS pixels using canvas 2d so
       // the backend can draw pill/rounded boxes that match exactly what the browser renders,
