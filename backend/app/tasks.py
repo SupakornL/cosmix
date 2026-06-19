@@ -125,7 +125,16 @@ def process_video_task(self, job_id: str):
             add_watermark(output_path, wm_path)
             os.replace(wm_path, output_path)
 
-        job.output_s3_key = output_path
+        # Step 6: Upload processed output to R2 so it survives Railway restarts
+        from .services.r2_storage import upload_file
+        output_r2_key = f"outputs/{job_id}.mp4"
+        upload_file(output_path, output_r2_key)
+        try:
+            os.remove(output_path)
+        except OSError:
+            pass
+
+        job.output_s3_key = output_r2_key
         job.progress = 100
         job.status = JobStatus.done
         db.commit()
