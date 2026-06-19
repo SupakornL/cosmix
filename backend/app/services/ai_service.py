@@ -94,13 +94,78 @@ def build_word_timestamps(segments: list) -> list:
     return result
 
 # ─── Transcription ────────────────────────────────────────────
-async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
+
+def _group_words_into_segments(raw_words: list, words_per_segment: int = 4) -> list:
+    segments = []
+    for i in range(0, len(raw_words), words_per_segment):
+        chunk = raw_words[i:i + words_per_segment]
+        text = "".join(w["word"] for w in chunk)
+        segments.append({
+            "id": i // words_per_segment,
+            "start": chunk[0]["start"],
+            "end": chunk[-1]["end"],
+            "text": text,
+        })
+    return segments
+
+
+async def _transcribe_groq(audio_path: str, language: str) -> dict:
+    """Transcribe using Groq Whisper with real word-level timestamps."""
+    lang_arg = None if language == "auto" else language
+
+    with open(audio_path, "rb") as f:
+        audio_bytes = f.read()
+
+    kwargs = dict(
+        file=(audio_path, audio_bytes, "audio/mpeg"),
+        model="whisper-large-v3",
+        response_format="verbose_json",
+        timestamp_granularities=["word"],
+    )
+    if lang_arg:
+        kwargs["language"] = lang_arg
+
+    response = await groq_client.audio.transcriptions.create(**kwargs)
+
+    groq_words = getattr(response, "words", None) or []
+    raw_words = []
+    for w in groq_words:
+        word_text = getattr(w, "word", "").strip()
+        if not word_text:
+            continue
+        start = float(getattr(w, "start", 0))
+        end = float(getattr(w, "end", start))
+        # Groq gives real word timestamps — split Thai words within each token
+        tokens = tokenize_segment(word_text)
+        if len(tokens) <= 1:
+            raw_words.append({"word": word_text, "start": round(start, 3), "end": round(end, 3)})
+        else:
+            dur = end - start
+            lengths = [max(1, len(t)) for t in tokens]
+            total = sum(lengths)
+            pos = start
+            for token, length in zip(tokens, lengths):
+                d = dur * (length / total)
+                raw_words.append({"word": token, "start": round(pos, 3), "end": round(pos + d, 3)})
+                pos += d
+
+    full_text = getattr(response, "text", "") or ""
+    detected_lang = getattr(response, "language", language) or language
+    segments = _group_words_into_segments(raw_words) if raw_words else [{
+        "id": 0, "start": 0, "end": 0, "text": full_text,
+    }]
+    words = raw_words if raw_words else build_word_timestamps(segments)
+
+    return {"text": full_text, "language": detected_lang, "segments": segments, "words": words}
+
+
+async def _transcribe_assemblyai(audio_path: str, language: str) -> dict:
+    """Transcribe using AssemblyAI (fallback). Thai timestamps are phrase-level."""
     import assemblyai as aai
     import asyncio
 
     aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
 
-    # Language code mapping
     lang_map = {
         "th": "th", "en": "en", "ja": "ja", "zh": "zh",
         "ko": "ko", "fr": "fr", "de": "de", "es": "es",
@@ -108,7 +173,6 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
         "vi": "vi", "id": "id",
     }
 
-    # universal-3-pro (fallback universal-2) gives the best Thai accuracy currently offered
     config_kwargs = {"speech_models": ["universal-3-pro", "universal-2"]}
     if language != "auto" and language in lang_map:
         config_kwargs["language_code"] = lang_map[language]
@@ -118,16 +182,12 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
     config = aai.TranscriptionConfig(**config_kwargs)
     transcriber = aai.Transcriber(config=config)
 
-    # AssemblyAI SDK is sync — run in executor
     loop = asyncio.get_event_loop()
-    transcript = await loop.run_in_executor(
-        None, lambda: transcriber.transcribe(audio_path)
-    )
+    transcript = await loop.run_in_executor(None, lambda: transcriber.transcribe(audio_path))
 
     if transcript.status == aai.TranscriptStatus.error:
         raise Exception(f"AssemblyAI error: {transcript.error}")
 
-    # Build raw word tokens first (AssemblyAI phrase-level → PyThaiNLP word-level)
     raw_words = []
     if transcript.words:
         for w in transcript.words:
@@ -141,55 +201,31 @@ async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
                 pos = w.start / 1000.0
                 for token, length in zip(tokens, lengths):
                     d = dur * (length / total)
-                    raw_words.append({
-                        "word": token,
-                        "start": round(pos, 3),
-                        "end": round(pos + d, 3),
-                    })
+                    raw_words.append({"word": token, "start": round(pos, 3), "end": round(pos + d, 3)})
                     pos += d
 
-    # Build segments by grouping words into chunks of max 4 words
-    # This ensures word modes show only a few words at a time
     segments = []
-    WORDS_PER_SEGMENT = 4
     if raw_words:
-        for i in range(0, len(raw_words), WORDS_PER_SEGMENT):
-            chunk = raw_words[i:i + WORDS_PER_SEGMENT]
-            text = "".join(w["word"] for w in chunk)
-            segments.append({
-                "id": i // WORDS_PER_SEGMENT,
-                "start": chunk[0]["start"],
-                "end": chunk[-1]["end"],
-                "text": text,
-            })
+        segments = _group_words_into_segments(raw_words)
+    elif transcript.get_sentences():
+        for i, sentence in enumerate(transcript.get_sentences()):
+            segments.append({"id": i, "start": sentence.start / 1000.0, "end": sentence.end / 1000.0, "text": sentence.text.strip()})
     else:
-        # Fallback: use sentences
-        if transcript.get_sentences():
-            for i, sentence in enumerate(transcript.get_sentences()):
-                segments.append({
-                    "id": i,
-                    "start": sentence.start / 1000.0,
-                    "end": sentence.end / 1000.0,
-                    "text": sentence.text.strip(),
-                })
-        else:
-            segments = [{
-                "id": 0,
-                "start": 0,
-                "end": transcript.audio_duration or 0,
-                "text": transcript.text or "",
-            }]
+        segments = [{"id": 0, "start": 0, "end": transcript.audio_duration or 0, "text": transcript.text or ""}]
 
     words = raw_words if raw_words else build_word_timestamps(segments)
-
     detected_lang = getattr(transcript, "language_code", language) or language
 
-    return {
-        "text": transcript.text or "",
-        "language": detected_lang,
-        "segments": segments,
-        "words": words,
-    }
+    return {"text": transcript.text or "", "language": detected_lang, "segments": segments, "words": words}
+
+
+async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
+    """Transcribe audio. Uses Groq Whisper (real word timestamps) with AssemblyAI fallback."""
+    try:
+        return await _transcribe_groq(audio_path, language)
+    except Exception as groq_err:
+        print(f"[transcribe] Groq failed ({groq_err}), falling back to AssemblyAI")
+        return await _transcribe_assemblyai(audio_path, language)
 def segments_to_srt(segments: list) -> str:
     def fmt(s):
         h, m, sec, ms = int(s//3600), int((s%3600)//60), int(s%60), int((s-int(s))*1000)
