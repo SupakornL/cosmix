@@ -21,6 +21,16 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Per-job locks to serialize concurrent export requests' download-if-missing step
 _export_locks: dict[str, asyncio.Lock] = {}
 
+def _get_job(db: Session, job_id: str, current_user: User) -> Job:
+    """Fetch job — admin can access any job, regular users only their own."""
+    q = db.query(Job).filter(Job.id == job_id)
+    if current_user.role != UserRole.admin:
+        q = q.filter(Job.user_id == current_user.id)
+    job = q.first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
 def _get_export_lock(job_id: str) -> asyncio.Lock:
     lock = _export_locks.get(job_id)
     if lock is None:
@@ -133,9 +143,7 @@ async def upload_video(
 
 @router.get("/{job_id}/status")
 def get_job_status(job_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+    job = _get_job(db, job_id, current_user)
     return {
         "job_id": str(job.id),
         "status": job.status,
@@ -148,8 +156,8 @@ def get_job_status(job_id: str, current_user: User = Depends(get_current_user), 
 
 @router.get("/{job_id}/subtitle")
 def download_subtitle(job_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
-    if not job or not job.subtitle_srt:
+    job = _get_job(db, job_id, current_user)
+    if not job.subtitle_srt:
         raise HTTPException(status_code=404, detail="Subtitle not found")
     
     return StreamingResponse(
@@ -169,10 +177,8 @@ async def chat_edit(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
+    job = _get_job(db, job_id, current_user)
+
     from ..services.ai_service import chat_edit_command
     transcript = ""
     if job.subtitle_srt:
@@ -475,9 +481,7 @@ async def export_video(
     from fastapi.responses import FileResponse
     import tempfile, json
 
-    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
-    if not job:
-        raise HTTPException(status_code=404)
+    job = _get_job(db, job_id, current_user)
 
     r2_key = job.input_s3_key
     if not r2_key:
@@ -614,9 +618,7 @@ async def export_video(
 @router.get("/{job_id}/words")
 def get_word_timestamps(job_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Return word-level timestamps for TikTok-style subtitle rendering."""
-    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+    job = _get_job(db, job_id, current_user)
     if not job.ai_suggestions:
         raise HTTPException(status_code=404, detail="Word timestamps not available")
     # Word timestamps stored in ai_suggestions under 'words' key
@@ -636,9 +638,7 @@ def save_subtitle(
     db: Session = Depends(get_db)
 ):
     """Save edited subtitle segments back to DB."""
-    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+    job = _get_job(db, job_id, current_user)
 
     # Convert segments to SRT
     def fmt(s: float) -> str:
