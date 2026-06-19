@@ -296,7 +296,8 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
         full_text_parts.append(alt.transcript)
         for w in alt.words:
             word_text = w.word.strip()
-            if not word_text:
+            # Skip blank tokens and filler markers (e.g. "_", "__") that Google STT inserts
+            if not word_text or re.match(r'^[_\W]+$', word_text):
                 continue
             start = w.start_time.total_seconds()
             end = w.end_time.total_seconds()
