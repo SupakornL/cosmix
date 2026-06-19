@@ -151,10 +151,27 @@ async def _transcribe_groq(audio_path: str, language: str) -> dict:
 
     full_text = getattr(response, "text", "") or ""
     detected_lang = getattr(response, "language", language) or language
-    segments = _group_words_into_segments(raw_words) if raw_words else [{
-        "id": 0, "start": 0, "end": 0, "text": full_text,
-    }]
-    words = raw_words if raw_words else build_word_timestamps(segments)
+
+    if raw_words:
+        # Got real word-level timestamps — group into display segments
+        segments = _group_words_into_segments(raw_words)
+        words = raw_words
+    else:
+        # Groq didn't return word timestamps — try segment-level (sentence timestamps)
+        groq_segments = getattr(response, "segments", None) or []
+        if groq_segments:
+            segments = []
+            for i, s in enumerate(groq_segments):
+                seg_start = float(getattr(s, "start", 0))
+                seg_end = float(getattr(s, "end", seg_start))
+                seg_text = (getattr(s, "text", "") or "").strip()
+                if seg_text and seg_end > seg_start:
+                    segments.append({"id": i, "start": round(seg_start, 3), "end": round(seg_end, 3), "text": seg_text})
+            if not segments:
+                raise ValueError("Groq returned no usable segments — falling back to AssemblyAI")
+            words = build_word_timestamps(segments)
+        else:
+            raise ValueError("Groq returned no segments or words — falling back to AssemblyAI")
 
     return {"text": full_text, "language": detected_lang, "segments": segments, "words": words}
 
