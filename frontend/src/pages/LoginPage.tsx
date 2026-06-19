@@ -120,7 +120,7 @@ export default function LoginPage() {
 
       {/* Trial notice */}
       <p style={styles.note}>
-        Trial accounts include all features with watermark for 5 days
+        Trial accounts include all features with watermark for 7 days
       </p>
     </div>
   )

@@ -42,9 +42,9 @@ const PLANS = [
   {
     name: 'Trial',
     price: 'ฟรี',
-    period: '5 วัน',
+    period: '7 วัน',
     desc: 'ทดลองใช้ฟรี ครบทุก feature',
-    features: ['ทุก AI modes', 'Auto subtitle ภาษาไทย+อังกฤษ', 'ไม่จำกัด jobs ใน 5 วัน', 'มี watermark บน output'],
+    features: ['ทุก AI modes', 'Auto subtitle ภาษาไทย+อังกฤษ', 'ไม่จำกัด jobs ใน 7 วัน', 'มี watermark บน output'],
     cta: 'เริ่มทดลองฟรี',
     featured: false,
     plan: 'trial',
@@ -191,7 +191,7 @@ export default function LandingPage() {
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button className="btn-outline" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/login')}>Log in</button>
-          <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/register')}>ทดลองฟรี 5 วัน</button>
+          <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/register')}>ทดลองฟรี 7 วัน</button>
         </div>
       </nav>
 

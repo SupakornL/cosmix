@@ -6,13 +6,13 @@ const PLANS = [
   {
     name: 'Trial',
     price: 'ฟรี',
-    period: '5 วัน',
+    period: '7 วัน',
     desc: 'ทดลองใช้ฟรี ครบทุก feature',
     color: '#64748B',
     features: [
       { text: 'ทุก AI modes', ok: true },
       { text: 'Auto subtitle ภาษาไทย+อังกฤษ', ok: true },
-      { text: 'ไม่จำกัด jobs ใน 5 วัน', ok: true },
+      { text: 'ไม่จำกัด jobs ใน 7 วัน', ok: true },
       { text: 'มี watermark บน output', ok: false },
     ],
     cta: 'เริ่มทดลองฟรี',
@@ -109,7 +109,7 @@ export default function PricingPage() {
       <div style={S.hero}>
         <div style={S.badge}>✦ Simple Pricing</div>
         <h1 style={S.heroTitle}>เลือกแพลนที่ใช่สำหรับคุณ</h1>
-        <p style={S.heroSub}>ทดลองใช้ฟรี 5 วัน ไม่ต้องใส่บัตรเครดิต</p>
+        <p style={S.heroSub}>ทดลองใช้ฟรี 7 วัน ไม่ต้องใส่บัตรเครดิต</p>
       </div>
 
       {/* Plans */}
@@ -167,7 +167,7 @@ export default function PricingPage() {
                 ['Word-by-word subtitle', '✓', '✓'],
                 ['Suggest Edits', '✓', '✓'],
                 ['Chat to Edit', '✓', '✓'],
-                ['Jobs', 'ไม่จำกัดใน 5 วัน', '100/เดือน'],
+                ['Jobs', 'ไม่จำกัดใน 7 วัน', '100/เดือน'],
                 ['Watermark', 'มี', 'ไม่มี'],
                 ['Export quality', '1080p', '1080p'],
               ].map(([feature, trial, pro]) => (
@@ -200,7 +200,7 @@ export default function PricingPage() {
         <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 700, margin: '0 0 12px', color: '#F8FAFC' }}>
           พร้อมเริ่มแล้วใช่มั้ย?
         </h2>
-        <p style={{ color: '#475569', marginBottom: 28 }}>ทดลองใช้ฟรี 5 วัน ไม่ต้องใส่บัตรเครดิต</p>
+        <p style={{ color: '#475569', marginBottom: 28 }}>ทดลองใช้ฟรี 7 วัน ไม่ต้องใส่บัตรเครดิต</p>
         <button style={{ ...S.btnPrimary, fontSize: 16, padding: '14px 36px' }} onClick={() => navigate('/register')}>
           Start free trial
         </button>
