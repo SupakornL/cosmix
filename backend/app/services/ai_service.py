@@ -246,8 +246,89 @@ async def _transcribe_assemblyai(audio_path: str, language: str) -> dict:
     return {"text": transcript.text or "", "language": detected_lang, "segments": segments, "words": words}
 
 
+async def _transcribe_google(audio_path: str, language: str) -> dict:
+    """Transcribe using Google Cloud Speech-to-Text — best Thai accuracy."""
+    import asyncio, json
+    from google.cloud import speech
+    from google.oauth2 import service_account
+
+    creds_json = settings.GOOGLE_CLOUD_CREDENTIALS_JSON
+    if not creds_json:
+        raise ValueError("GOOGLE_CLOUD_CREDENTIALS_JSON not set")
+
+    creds_info = json.loads(creds_json)
+    credentials = service_account.Credentials.from_service_account_info(
+        creds_info, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    client = speech.SpeechClient(credentials=credentials)
+
+    with open(audio_path, "rb") as f:
+        audio_bytes = f.read()
+
+    lang_code = "th-TH"
+    if language not in ("auto", "th"):
+        lang_map = {"en": "en-US", "ja": "ja-JP", "zh": "zh-TW", "ko": "ko-KR",
+                    "fr": "fr-FR", "de": "de-DE", "es": "es-ES", "vi": "vi-VN", "id": "id-ID"}
+        lang_code = lang_map.get(language, "th-TH")
+
+    audio = speech.RecognitionAudio(content=audio_bytes)
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.MP3,
+        sample_rate_hertz=16000,
+        language_code=lang_code,
+        enable_word_time_offsets=True,
+        enable_automatic_punctuation=True,
+        model="latest_long",
+    )
+
+    loop = asyncio.get_event_loop()
+    response = await loop.run_in_executor(
+        None, lambda: client.recognize(config=config, audio=audio)
+    )
+
+    if not response.results:
+        raise ValueError("Google STT returned no results")
+
+    raw_words = []
+    full_text_parts = []
+    for result in response.results:
+        alt = result.alternatives[0]
+        full_text_parts.append(alt.transcript)
+        for w in alt.words:
+            word_text = w.word.strip()
+            if not word_text:
+                continue
+            start = w.start_time.total_seconds()
+            end = w.end_time.total_seconds()
+            tokens = tokenize_segment(word_text)
+            if len(tokens) <= 1:
+                raw_words.append({"word": word_text, "start": round(start, 3), "end": round(end, 3)})
+            else:
+                dur = end - start
+                lengths = [max(1, len(t)) for t in tokens]
+                total = sum(lengths)
+                pos = start
+                for token, length in zip(tokens, lengths):
+                    d = dur * (length / total)
+                    raw_words.append({"word": token, "start": round(pos, 3), "end": round(pos + d, 3)})
+                    pos += d
+
+    full_text = " ".join(full_text_parts)
+    if not raw_words:
+        raise ValueError("Google STT returned no word timestamps")
+
+    segments = _group_words_into_segments(raw_words)
+    return {"text": full_text, "language": lang_code, "segments": segments, "words": raw_words}
+
+
 async def transcribe_audio(audio_path: str, language: str = "auto") -> dict:
-    """Transcribe audio. Uses Groq Whisper (real word timestamps) with AssemblyAI fallback."""
+    """Transcribe audio. Priority: Google STT → Groq Whisper → AssemblyAI."""
+    if settings.GOOGLE_CLOUD_CREDENTIALS_JSON:
+        try:
+            return await _transcribe_google(audio_path, language)
+        except Exception as e:
+            print(f"[transcribe] Google STT failed ({e}), falling back to Groq")
+
     try:
         return await _transcribe_groq(audio_path, language)
     except Exception as groq_err:

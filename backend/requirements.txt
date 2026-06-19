@@ -35,6 +35,7 @@ bcrypt==4.0.1
 anthropic
 groq
 assemblyai
+google-cloud-speech
 supervisor
 attacut
 pythainlp

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     ASSEMBLYAI_API_KEY: str = ""
+    GOOGLE_CLOUD_CREDENTIALS_JSON: str = ""  # service account JSON as string
     
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
