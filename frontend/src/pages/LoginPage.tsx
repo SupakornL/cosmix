@@ -114,7 +114,7 @@ export default function LoginPage() {
         </div>
 
         <Link to="/register" style={styles.btnOutline}>
-          Create account — free 5-day trial
+          Create account — free 7-day trial
         </Link>
       </div>
 
