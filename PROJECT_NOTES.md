@@ -16,7 +16,7 @@
 | Admin | `admin@cosmix.com` / `admin1234` | `/admin` |
 
 **Storage:** Cloudflare R2 (5-day auto-delete)
-**Payments:** Stripe — Pro ฿199/mo, 100 jobs/mo, trial 5 วันฟรี
+**Payments:** Stripe — Pro ฿199/mo, 100 jobs/mo, trial 7 วันฟรี
 **AI:** AssemblyAI (transcription) + PyThaiNLP/attacut (Thai word tokenization) + Anthropic Claude (suggestions)
 **Process management:** supervisord runs web + worker + beat บน Railway
 
@@ -189,7 +189,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-14)
+## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-19)
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
@@ -211,6 +211,8 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | ถ้า R2 upload ล้มเหลว เก็บ local `/tmp` path เป็น `input_s3_key` ถาวร | ✅ Fixed (2026-06-14) | mark job เป็น `failed` ทันที + ลบไฟล์ local ที่ค้าง แทนที่จะ fallback เงียบๆ |
 | `thai_combining` regex อาจรวม "ำ" | ✅ ตรวจแล้วไม่ใช่บัค (2026-06-14) | regex เดิม `[ัิ-ฺ็-๎]` ไม่รวม U+0E33 (ำ) อยู่แล้ว — เพิ่ม comment อธิบายไว้กันสับสนรอบหน้า |
 | `hex_to_ass` ไม่ validate input color hex | ✅ Fixed (2026-06-14) | ถ้า hex หลัง `zfill(6)` ไม่ match `[0-9A-F]{6}` (เช่น ผิดรูปแบบ/ยาวเกิน) จะ fallback เป็น `FFFFFF` แทน |
+| `job.output_s3_key` เก็บ local path แทน R2 key | ✅ Fixed (2026-06-19) | `tasks.py` upload processed output ขึ้น R2 (`outputs/{job_id}.mp4`) ก่อน commit — วิดีโอ preview ไม่หายหลัง Railway restart แล้ว |
+| Trial copy ไม่ตรงกัน (UI บอก 5 วัน แต่ backend ให้ 7 วัน) | ✅ Fixed (2026-06-19) | แก้ LandingPage, PricingPage, LoginPage ให้เป็น "7 วัน" ตรงกับ `TRIAL_DAYS=7` |
 
 ---
 
