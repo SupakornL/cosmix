@@ -116,11 +116,21 @@ async def _transcribe_groq(audio_path: str, language: str) -> dict:
     with open(audio_path, "rb") as f:
         audio_bytes = f.read()
 
+    # Thai prompt — primes Whisper to output correct Thai script and spelling.
+    # Using common Thai words/phrases reduces hallucination and transliteration errors.
+    thai_prompt = (
+        "ต่อไปนี้เป็นเนื้อหาภาษาไทย กรุณาถอดความเป็นภาษาไทยที่ถูกต้องและชัดเจน "
+        "ใช้ตัวอักษรไทยเท่านั้น ไม่ใช้การทับศัพท์หรืออักษรโรมัน "
+        "เช่น สวัสดีครับ ขอบคุณครับ ใช่ครับ ไม่ครับ อะไรนะครับ"
+    )
+
     kwargs = dict(
         file=(audio_path, audio_bytes, "audio/mpeg"),
         model="whisper-large-v3",
         response_format="verbose_json",
         timestamp_granularities=["word"],
+        temperature=0.0,
+        prompt=thai_prompt if (not lang_arg or lang_arg == "th") else "",
     )
     if lang_arg:
         kwargs["language"] = lang_arg
