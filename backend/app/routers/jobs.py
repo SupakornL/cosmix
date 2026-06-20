@@ -304,7 +304,12 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         a = format(alpha, '02X')
         return f"&H{a}{b}{g}{r}"
 
-    primary_color = hex_to_ass(color_hex, 0)
+    # scale_pop/scale_pop_bold always shows the active (highlighted) word — use highlightColor
+    if display_mode in ('scale_pop', 'scale_pop_bold'):
+        hl_hex = subtitle_style.get('highlightColor', '#FFFF00').lstrip('#').upper()
+        primary_color = hex_to_ass(hl_hex, 0)
+    else:
+        primary_color = hex_to_ass(color_hex, 0)
 
     # Box/background color
     # 'rounded_solid' and 'pill' can't be done with ASS BorderStyle=4 (rectangle only),
@@ -327,7 +332,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # CSS applies textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 3px rgba(0,0,0,0.8)'
     # Scale both shadow and outline by css_scale so they stay proportionally visible
     # at the export resolution (2 ASS units in PlayResX=1080 ≈ 0.7 display px — invisible).
-    shadow_val = max(2, int(css_scale * 2)) if shadow_on else 0
+    shadow_val = min(3, max(1, int(css_scale * 1.5))) if shadow_on else 0
     if use_drawn_box:
         back_color = "&H00000000"
         border_style = 1
