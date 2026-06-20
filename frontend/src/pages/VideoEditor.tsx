@@ -728,15 +728,30 @@ export default function VideoEditor() {
   // Same word-mode-vs-segment logic used for export and for the JASSUB live preview,
   // so both use identical subtitle entries.
   function buildExportSubtitles() {
-    const wordModes = ['word_single', 'word_trail', 'word_pop', 'scale_pop', 'scale_pop_bold']
-    const isWordMode = wordModes.includes(style.displayMode)
-    if (isWordMode && words.length > 0) {
-      return words.map((w, i) => ({
-        id: i + 1,
-        start: w.start,
-        end: w.end,
-        text: w.word,
-      }))
+    const scaleModes = ['scale_pop', 'scale_pop_bold']
+    const wordModes = ['word_single', 'word_trail', 'word_pop']
+
+    // Scale Pop: emit window of words with ASS inline size tags to match preview
+    if (scaleModes.includes(style.displayMode) && words.length > 0) {
+      const WINDOW = 2
+      const isBold = style.displayMode === 'scale_pop_bold'
+      return words.map((w, i) => {
+        const startIdx = Math.max(0, i - WINDOW)
+        const endIdx = Math.min(words.length - 1, i + WINDOW)
+        // Active word at 100% (= 1.6x base, set in backend), inactive at 53% (≈ 0.85x)
+        const text = words.slice(startIdx, endIdx + 1).map((ww, wi) => {
+          const isActive = startIdx + wi === i
+          const wd = ww.word
+          return isActive
+            ? `{\\fscx100\\fscy100${isBold ? '\\b1' : ''}}${wd}{\\r\\fscx53\\fscy53}`
+            : `{\\fscx53\\fscy53}${wd}`
+        }).join(' ')
+        return { id: i + 1, start: w.start, end: w.end, text }
+      })
+    }
+
+    if (wordModes.includes(style.displayMode) && words.length > 0) {
+      return words.map((w, i) => ({ id: i + 1, start: w.start, end: w.end, text: w.word }))
     }
     return segments
   }
