@@ -627,7 +627,7 @@ export default function VideoEditor() {
             subtitles: buildExportSubtitles(),
             vid_w: v.videoWidth,
             vid_h: v.videoHeight,
-            previewWidth: 0,
+            previewWidth: v.getBoundingClientRect().width || 0,
           }),
         })
         if (res.ok) { const d = await res.json(); setAssContent(d.ass) }

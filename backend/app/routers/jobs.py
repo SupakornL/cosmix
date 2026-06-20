@@ -332,7 +332,12 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # CSS applies textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 3px rgba(0,0,0,0.8)'
     # Scale both shadow and outline by css_scale so they stay proportionally visible
     # at the export resolution (2 ASS units in PlayResX=1080 ≈ 0.7 display px — invisible).
-    shadow_val = min(3, max(1, int(css_scale * 1.5))) if shadow_on else 0
+    # scale_pop relies on the word standing out on its own — shadow/outline adds clutter
+    if display_mode in ('scale_pop', 'scale_pop_bold'):
+        shadow_val = 0
+        outline_on = False
+    else:
+        shadow_val = min(3, max(1, int(css_scale * 1.5))) if shadow_on else 0
     if use_drawn_box:
         back_color = "&H00000000"
         border_style = 1
