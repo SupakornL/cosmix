@@ -339,7 +339,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         border_style = 4  # opaque box
         outline_val = 8   # padding for box
         shadow_val = 0    # BorderStyle=4 doesn't support a separate text shadow
-    elif bg_opacity > 0:
+    elif bg_opacity > 0 and display_mode not in no_box_modes:
         bg_alpha = int((1 - bg_opacity) * 255)
         back_color = hex_to_ass(bg_color_hex, bg_alpha)
         border_style = 4

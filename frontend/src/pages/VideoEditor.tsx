@@ -731,20 +731,27 @@ export default function VideoEditor() {
     const scaleModes = ['scale_pop', 'scale_pop_bold']
     const wordModes = ['word_single', 'word_trail', 'word_pop']
 
-    // Scale Pop: emit window of words with ASS inline size tags to match preview
+    // Scale Pop: emit window of words with ASS inline tags (size + color) to match preview
     if (scaleModes.includes(style.displayMode) && words.length > 0) {
       const WINDOW = 2
       const isBold = style.displayMode === 'scale_pop_bold'
+      // Convert CSS hex color → ASS &HAABBGGRR (alpha=00 = opaque)
+      const toAss = (hex: string) => {
+        const h = hex.replace('#', '').padStart(6, '0').toUpperCase()
+        return `&H00${h[4]}${h[5]}${h[2]}${h[3]}${h[0]}${h[1]}`
+      }
+      const hlAss = toAss(style.highlightColor || '#FFFF00')
+      const txAss = toAss(style.color || '#FFFFFF')
       return words.map((w, i) => {
         const startIdx = Math.max(0, i - WINDOW)
         const endIdx = Math.min(words.length - 1, i + WINDOW)
-        // Active word at 100% (= 1.6x base, set in backend), inactive at 53% (≈ 0.85x)
+        // Active word at 100% (= 1.6x base set in backend) + highlight color
+        // Inactive at 53% (≈ 0.85x of base) + text color — no \r to avoid style reset
         const text = words.slice(startIdx, endIdx + 1).map((ww, wi) => {
           const isActive = startIdx + wi === i
-          const wd = ww.word
           return isActive
-            ? `{\\fscx100\\fscy100${isBold ? '\\b1' : ''}}${wd}{\\r\\fscx53\\fscy53}`
-            : `{\\fscx53\\fscy53}${wd}`
+            ? `{\\fscx100\\fscy100\\1c${hlAss}${isBold ? '\\b1' : ''}}${ww.word}`
+            : `{\\fscx53\\fscy53\\1c${txAss}\\b0}${ww.word}`
         }).join(' ')
         return { id: i + 1, start: w.start, end: w.end, text }
       })
