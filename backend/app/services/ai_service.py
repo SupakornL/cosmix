@@ -273,18 +273,18 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
 
     audio = speech.RecognitionAudio(content=audio_bytes)
     config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.MP3,
-        sample_rate_hertz=16000,
         language_code=lang_code,
         enable_word_time_offsets=True,
         enable_automatic_punctuation=True,
-        model="latest_long",
+        model="chirp_2",
+        auto_decoding_config=speech.AutoDetectDecodingConfig(),
     )
 
     loop = asyncio.get_event_loop()
-    response = await loop.run_in_executor(
-        None, lambda: client.recognize(config=config, audio=audio)
+    operation = await loop.run_in_executor(
+        None, lambda: client.long_running_recognize(config=config, audio=audio)
     )
+    response = await loop.run_in_executor(None, lambda: operation.result(timeout=300))
 
     if not response.results:
         raise ValueError("Google STT returned no results")
