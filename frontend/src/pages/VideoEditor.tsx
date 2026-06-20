@@ -26,8 +26,6 @@ const DISPLAY_MODES = [
   { id: 'word_single',   label: 'Word (Single)',     desc: 'ทีละคำ — คำเดียว',               icon: '◉' },
   { id: 'word_trail',    label: 'Word (Trail)',      desc: 'ทีละคำ — เห็นคำก่อนหน้าด้วย',   icon: '◎' },
   { id: 'word_pop',      label: 'Word Pop',          desc: 'คำ scale up ตอนพูด (TikTok)',    icon: '✦' },
-  { id: 'karaoke',       label: 'Karaoke',           desc: 'Highlight ทีละคำในประโยค',       icon: '🎤' },
-  { id: 'karaoke_color', label: 'Karaoke Color',     desc: 'เปลี่ยนสีทีละคำ',                icon: '🌈' },
   { id: 'typewriter',    label: 'Typewriter',        desc: 'พิมพ์ทีละตัวอักษร',              icon: '⌨' },
   { id: 'fade',          label: 'Fade In/Out',       desc: 'ค่อยๆ ปรากฏ/หาย',               icon: '◌' },
   { id: 'slide_up',      label: 'Slide Up',          desc: 'เลื่อนขึ้นจากล่าง',              icon: '↑' },
@@ -529,20 +527,9 @@ export default function VideoEditor() {
   const [assContent, setAssContent] = useState('')
 
   const currentSeg = useMemo(() => {
-    // First try exact match
-    const exact = segments.find(s => currentTime >= s.start && currentTime <= s.end)
-    if (exact) return exact
-    // If paused before first segment or video not started
     if (segments.length === 0) return null
-    // Find nearest segment (for preview when editing)
-    const nearest = segments.reduce((prev, curr) => {
-      const prevDist = Math.min(Math.abs(currentTime - prev.start), Math.abs(currentTime - prev.end))
-      const currDist = Math.min(Math.abs(currentTime - curr.start), Math.abs(currentTime - curr.end))
-      return currDist < prevDist ? curr : prev
-    })
-    // Only show nearest if within 2 seconds (don't show subtitle in long silent gaps)
-    const dist = Math.min(Math.abs(currentTime - nearest.start), Math.abs(currentTime - nearest.end))
-    return dist <= 2.0 ? nearest : null
+    // Exact match only — no lingering during silent gaps
+    return segments.find(s => currentTime >= s.start && currentTime <= s.end) ?? null
   }, [segments, currentTime])
 
   // Debug: detect re-render loop
@@ -741,7 +728,7 @@ export default function VideoEditor() {
   // Same word-mode-vs-segment logic used for export and for the JASSUB live preview,
   // so both use identical subtitle entries.
   function buildExportSubtitles() {
-    const wordModes = ['word_single', 'word_trail', 'word_pop', 'karaoke', 'karaoke_color', 'scale_pop', 'scale_pop_bold']
+    const wordModes = ['word_single', 'word_trail', 'word_pop', 'scale_pop', 'scale_pop_bold']
     const isWordMode = wordModes.includes(style.displayMode)
     if (isWordMode && words.length > 0) {
       return words.map((w, i) => ({
