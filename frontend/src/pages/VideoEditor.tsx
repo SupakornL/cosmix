@@ -310,23 +310,26 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
     )
   }
 
-  // KARAOKE_COLOR — สีเปลี่ยนตาม progress ใช้ gradient
+  // KARAOKE_COLOR — highlight คำที่พูดอยู่ คำที่พูดแล้วสีต่าง คำที่ยังไม่พูดสีจาง
   if (style.displayMode === 'karaoke_color') {
     if (segWords.length === 0) return null
     const activeIdx = segWords.findIndex(w => currentTime >= w.start && currentTime <= w.end)
-    const pct = activeIdx >= 0 ? (activeIdx / segWords.length) * 100 : (currentTime > seg.end ? 100 : 0)
     return (
       <div style={baseWrap}>
-        <span style={{
-          fontSize: style.fontSize,
-          background: `linear-gradient(90deg, ${style.highlightColor} ${pct}%, ${style.color} ${pct}%)`,
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          fontWeight: 'bold',
-          transform: 'translateZ(0)',
-          WebkitFontSmoothing: 'antialiased',
-        } as React.CSSProperties}>
-          {style.allCaps ? seg.text.toUpperCase() : seg.text}
-        </span>
+        {segWords.map((w, i) => {
+          const isActive = i === activeIdx
+          const isDone = activeIdx >= 0 ? i < activeIdx : currentTime > seg.end
+          const wd = style.allCaps ? w.word.toUpperCase() : w.word
+          return (
+            <span key={i} style={{
+              fontSize: style.fontSize,
+              color: isActive ? style.highlightColor : isDone ? `${style.highlightColor}99` : style.color,
+              fontWeight: isActive ? 'bold' : style.bold ? 'bold' : 'normal',
+              padding: '0 2px',
+              transition: 'color 0.08s',
+            }}>{wd}</span>
+          )
+        })}
       </div>
     )
   }
