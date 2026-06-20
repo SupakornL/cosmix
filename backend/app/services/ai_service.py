@@ -302,18 +302,8 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
                 continue
             start = w.start_time.total_seconds()
             end = w.end_time.total_seconds()
-            tokens = tokenize_segment(word_text)
-            if len(tokens) <= 1:
-                raw_words.append({"word": word_text, "start": round(start, 3), "end": round(end, 3)})
-            else:
-                dur = end - start
-                lengths = [max(1, len(t)) for t in tokens]
-                total = sum(lengths)
-                pos = start
-                for token, length in zip(tokens, lengths):
-                    d = dur * (length / total)
-                    raw_words.append({"word": token, "start": round(pos, 3), "end": round(pos + d, 3)})
-                    pos += d
+            # Google STT already segments Thai words correctly — use as-is
+            raw_words.append({"word": word_text, "start": round(start, 3), "end": round(end, 3)})
 
     full_text = " ".join(full_text_parts)
     if not raw_words:
