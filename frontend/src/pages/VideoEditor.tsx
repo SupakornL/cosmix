@@ -322,7 +322,9 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
           background: `linear-gradient(90deg, ${style.highlightColor} ${pct}%, ${style.color} ${pct}%)`,
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           fontWeight: 'bold',
-        }}>
+          transform: 'translateZ(0)',
+          WebkitFontSmoothing: 'antialiased',
+        } as React.CSSProperties}>
           {style.allCaps ? seg.text.toUpperCase() : seg.text}
         </span>
       </div>
