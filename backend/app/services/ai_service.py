@@ -95,16 +95,18 @@ def build_word_timestamps(segments: list) -> list:
 
 # ─── Transcription ────────────────────────────────────────────
 
-def _merge_close_words(raw_words: list, max_gap: float = 0.05) -> list:
-    """Merge consecutive words with gap ≤ max_gap seconds.
-    Fixes Google STT splitting compound words like โปรตีน→โปร+ต+ีน at the character level."""
+def _merge_close_words(raw_words: list, max_gap: float = 0.02, max_merged_chars: int = 6) -> list:
+    """Merge consecutive words with gap ≤ max_gap seconds, only when merged result is short.
+    Fixes Google STT splitting short compound words like โปรตีน→โปร+ต+ีน (0ms gap)
+    without over-merging continuous Thai speech into one giant token."""
     if not raw_words:
         return raw_words
     merged = [dict(raw_words[0])]
     for w in raw_words[1:]:
         gap = w["start"] - merged[-1]["end"]
-        if gap <= max_gap:
-            merged[-1]["word"] += w["word"]
+        candidate = merged[-1]["word"] + w["word"]
+        if gap <= max_gap and len(candidate) <= max_merged_chars:
+            merged[-1]["word"] = candidate
             merged[-1]["end"] = max(merged[-1]["end"], w["end"])
         else:
             merged.append(dict(w))
