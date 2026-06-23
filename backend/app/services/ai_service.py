@@ -114,14 +114,24 @@ def _merge_close_words(raw_words: list, max_gap: float = 0.02, max_merged_chars:
 
 
 def _group_words_into_segments(raw_words: list, words_per_segment: int = 4) -> list:
+    chunks = [raw_words[i:i + words_per_segment] for i in range(0, len(raw_words), words_per_segment)]
     segments = []
-    for i in range(0, len(raw_words), words_per_segment):
-        chunk = raw_words[i:i + words_per_segment]
+    for idx, chunk in enumerate(chunks):
         text = "".join(w["word"] for w in chunk)
+        seg_end = chunk[-1]["end"]
+        # If there's a gap before the next chunk, end this segment earlier
+        # so subtitle disappears during silence instead of lingering.
+        if idx + 1 < len(chunks):
+            next_start = chunks[idx + 1][0]["start"]
+            if next_start > seg_end + 0.1:
+                # Real gap exists — end segment 50ms before next starts
+                seg_end = next_start - 0.05
+            elif next_start > seg_end:
+                seg_end = next_start - 0.02
         segments.append({
-            "id": i // words_per_segment,
+            "id": idx,
             "start": chunk[0]["start"],
-            "end": chunk[-1]["end"],
+            "end": round(seg_end, 3),
             "text": text,
         })
     return segments
