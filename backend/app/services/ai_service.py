@@ -95,6 +95,22 @@ def build_word_timestamps(segments: list) -> list:
 
 # ─── Transcription ────────────────────────────────────────────
 
+def _merge_close_words(raw_words: list, max_gap: float = 0.05) -> list:
+    """Merge consecutive words with gap ≤ max_gap seconds.
+    Fixes Google STT splitting compound words like โปรตีน→โปร+ต+ีน at the character level."""
+    if not raw_words:
+        return raw_words
+    merged = [dict(raw_words[0])]
+    for w in raw_words[1:]:
+        gap = w["start"] - merged[-1]["end"]
+        if gap <= max_gap:
+            merged[-1]["word"] += w["word"]
+            merged[-1]["end"] = max(merged[-1]["end"], w["end"])
+        else:
+            merged.append(dict(w))
+    return merged
+
+
 def _group_words_into_segments(raw_words: list, words_per_segment: int = 4) -> list:
     segments = []
     for i in range(0, len(raw_words), words_per_segment):
@@ -309,6 +325,7 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
     if not raw_words:
         raise ValueError("Google STT returned no word timestamps")
 
+    raw_words = _merge_close_words(raw_words)
     segments = _group_words_into_segments(raw_words)
     return {"text": full_text, "language": lang_code, "segments": segments, "words": raw_words}
 
