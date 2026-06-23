@@ -416,20 +416,23 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
   }
 
   // NORMAL (default)
+  const normalRadius = style.boxStyle === 'pill' ? 30 : style.boxStyle === 'rounded_solid' ? 10 : 2
   const normalBg = style.boxStyle !== 'none'
     ? `${style.boxColor}DD`
     : style.bgOpacity > 0
       ? `${style.bgColor}${Math.round(style.bgOpacity * 255).toString(16).padStart(2, '0')}`
       : 'transparent'
-  const normalRadius = style.boxStyle === 'pill' ? 30 : style.boxStyle === 'rounded_solid' ? 8 : 4
+  // BG Box (bgOpacity) fills full-width strip; boxStyle hugs the text
+  const isFullWidthBg = style.boxStyle === 'none' && style.bgOpacity > 0
   return (
     <div style={{ ...baseWrap, pointerEvents: onPositionChange ? 'auto' : 'none' }} onMouseDown={handleMouseDown}>
       <span style={{
         fontSize: style.fontSize, color: style.color,
         background: normalBg,
-        padding: style.boxStyle !== 'none' ? '6px 16px' : style.bgOpacity > 0 ? '4px 12px' : '0',
+        padding: style.boxStyle !== 'none' ? '6px 18px' : style.bgOpacity > 0 ? '4px 12px' : '0',
         borderRadius: normalRadius,
-        whiteSpace: 'pre-wrap', textAlign: 'center', display: 'block',
+        whiteSpace: 'pre-wrap', textAlign: 'center',
+        display: isFullWidthBg ? 'block' : 'inline',
         wordBreak: 'break-word', overflowWrap: 'break-word',
         maxWidth: '100%',
       }}>{displayText}</span>
