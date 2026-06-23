@@ -197,11 +197,11 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
 | Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 (Apollo research 2026-06-14: MMS/wav2vec2 forced-aligner เป็นทางเลือกที่ดูคุ้มที่สุดถ้าจะทำในอนาคต แต่ยังไม่คุ้มตอนนี้ — ต้อง verify ตัวเลขจริงก่อน) |
 | Thai transcription ผิด/สะกดผิดบางคำ | ✅ Fixed (2026-06-24) | เปลี่ยน ASR เป็น Google Cloud STT (latest_long model, th-TH) แทน AssemblyAI — accuracy ดีขึ้นมาก เพิ่ม `GOOGLE_CLOUD_CREDENTIALS_JSON` ใน Railway env, `google-cloud-speech` ใน requirements |
-| Google STT ตัดคำ compound words ผิด (โปรตีน→โปร+ต+ีน) | ✅ Fixed (2026-06-24) | `_merge_close_words()` ใน `ai_service.py` merge tokens ที่มี gap ≤50ms เข้าด้วยกัน |
+| Google STT ตัดคำ compound words ผิด (โปรตีน→โปร+ต+ีน) | ✅ Fixed (2026-06-24) | `_merge_close_words()` ใน `ai_service.py` — ปรับ max_gap=20ms + max_merged_chars=6 (2026-06-24 รอบ 2) เพื่อป้องกัน over-merge ทั้งประโยค |
 | ▁ SentencePiece boundary marker โผล่ใน word chips | ✅ Fixed (2026-06-24) | strip `▁` (U+2581) ออกจาก word text ใน `_transcribe_google()` |
 | Karaoke Color mode เบลอ | ✅ Fixed (2026-06-24) | ลบ mode ออก (gradient clip เบลอ ไม่สามารถแก้ได้ใน CSS) |
 | Karaoke mode (ทั้งคู่) | ✅ Removed (2026-06-24) | ลบออก — blur issue ไม่คุ้มแก้ |
-| Subtitle ค้างในช่วงเงียบ (preview) | ✅ Fixed (2026-06-24) | `currentSeg` ใช้ exact match only ไม่ "nearest within 2s" อีกต่อไป |
+| Subtitle ค้างในช่วงเงียบ (preview) | 🟡 Partial (2026-06-24) | `currentSeg` exact match แก้ได้บางส่วน แต่ยังค้างถ้า segment end_time จาก Google STT ยาวเลยเข้าช่วงเงียบ — `_group_words_into_segments` trim end ให้ไม่เกิน next_start-50ms แล้ว (deploy 2026-06-24) แต่ยังไม่ verify |
 | Scale Pop export ไม่ตรง preview (สี/shadow/size) | 🟡 ดีขึ้น | ใช้ highlightColor เป็น primary, ลบ shadow/outline, export ทีละคำ active — ยังไม่ match สนิทเรื่องขนาด |
 | Subtitle ไม่ตรงเสียงตอน export | 🔴 Open | timestamps จาก Google STT ถูกต้อง (ดู words response) — น่าจะเป็น video PTS offset หรือ audio extraction drift ยังไม่พบสาเหตุ |
 | Normal mode ใส่ box ไม่ได้ | ✅ Fixed (2026-06-24) | Normal mode render ตาม `boxStyle` แล้ว (Box/Rounded/Pill hug text ไม่ยืดเต็มกว้าง), เพิ่ม BG Box toggle button ใน Options |
@@ -269,6 +269,11 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 ---
 
 ## 8. Session Log
+
+### 2026-06-24 (session 2 — ต่อ)
+- `_merge_close_words`: ปรับ max_gap 50ms→20ms + เพิ่ม max_merged_chars=6 — ป้องกัน merge ทั้งประโยคเป็น 2 segment ใหญ่
+- `_group_words_into_segments`: trim segment `end` ให้ไม่เกิน next_start-50ms เพื่อกำจัด subtitle ค้างช่วงเงียบ (ยัง pending verify)
+- ยังเปิด: subtitle ค้างช่วงเงียบ (รอ Railway deploy + re-upload verify), subtitle ไม่ตรงเสียงใน export
 
 ### 2026-06-24
 - เปลี่ยน ASR เป็น Google Cloud STT (`latest_long`, `th-TH`) แทน AssemblyAI — Thai accuracy ดีขึ้นมาก
