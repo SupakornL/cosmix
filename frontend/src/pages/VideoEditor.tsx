@@ -52,7 +52,7 @@ const BOX_COLORS = ['#000000', '#7C3AED', '#EF4444', '#F59E0B', '#059669', '#3B8
 
 const DEFAULT_STYLE: SubStyle = {
   fontFamily: 'Sarabun', fontSize: 26, color: '#FFFFFF', highlightColor: '#FFFF00',
-  bgColor: '#000000', bgOpacity: 0.6, position: 'bottom',
+  bgColor: '#000000', bgOpacity: 0, position: 'bottom',
   bold: true, italic: false, outline: true, displayMode: 'word_pop',
   showPrev: false, allCaps: false, boxStyle: 'none', boxColor: '#000000', shadow: true,
   posX: 50, posY: -1, maxCharsPerLine: 20,
@@ -873,6 +873,8 @@ export default function VideoEditor() {
                     <button key={k} style={{ ...S.chip, ...((style as any)[k] ? S.chipActive : {}) }}
                       onClick={() => setStyle(s => ({ ...s, [k]: !(s as any)[k] }))}>{l}</button>
                   ))}
+                  <button style={{ ...S.chip, ...(style.bgOpacity > 0 ? S.chipActive : {}) }}
+                    onClick={() => setStyle(s => ({ ...s, bgOpacity: s.bgOpacity > 0 ? 0 : 0.6 }))}>BG Box</button>
                 </div>
               </div>
             )}
