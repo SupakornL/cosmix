@@ -416,12 +416,19 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
   }
 
   // NORMAL (default)
+  const normalBg = style.boxStyle !== 'none'
+    ? `${style.boxColor}DD`
+    : style.bgOpacity > 0
+      ? `${style.bgColor}${Math.round(style.bgOpacity * 255).toString(16).padStart(2, '0')}`
+      : 'transparent'
+  const normalRadius = style.boxStyle === 'pill' ? 30 : style.boxStyle === 'rounded_solid' ? 8 : 4
   return (
     <div style={{ ...baseWrap, pointerEvents: onPositionChange ? 'auto' : 'none' }} onMouseDown={handleMouseDown}>
       <span style={{
         fontSize: style.fontSize, color: style.color,
-        background: style.bgOpacity > 0 ? `${style.bgColor}${Math.round(style.bgOpacity*255).toString(16).padStart(2,'0')}` : 'transparent',
-        padding: '4px 12px', borderRadius: style.boxStyle === 'pill' ? 30 : 4,
+        background: normalBg,
+        padding: style.boxStyle !== 'none' ? '6px 16px' : style.bgOpacity > 0 ? '4px 12px' : '0',
+        borderRadius: normalRadius,
         whiteSpace: 'pre-wrap', textAlign: 'center', display: 'block',
         wordBreak: 'break-word', overflowWrap: 'break-word',
         maxWidth: '100%',
