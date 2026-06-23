@@ -189,14 +189,22 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-19)
+## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-24)
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
 | Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | 🟡 ดีขึ้นมากแล้ว แต่ยังไม่ match สนิท | วาด rounded-rect ด้วย ASS vector drawing + แก้ width/line-height estimate + centering + font-size multiplier ตาม displayMode, ดูหัวข้อ 4 — พี่บอส feedback 2026-06-15 ว่ายังไม่ match สนิท (กำลังหาว่าจุดไหน) |
 | Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
 | Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 (Apollo research 2026-06-14: MMS/wav2vec2 forced-aligner เป็นทางเลือกที่ดูคุ้มที่สุดถ้าจะทำในอนาคต แต่ยังไม่คุ้มตอนนี้ — ต้อง verify ตัวเลขจริงก่อน) |
-| Thai transcription ผิด/สะกดผิดบางคำ | 🟡 ปรับ speech_model=best แล้ว | ยังขึ้นกับคุณภาพโมเดล AssemblyAI ภาษาไทย — ถ้ายังไม่พอ ต้องพิจารณา ASR อื่น (Whisper ฯลฯ) |
+| Thai transcription ผิด/สะกดผิดบางคำ | ✅ Fixed (2026-06-24) | เปลี่ยน ASR เป็น Google Cloud STT (latest_long model, th-TH) แทน AssemblyAI — accuracy ดีขึ้นมาก เพิ่ม `GOOGLE_CLOUD_CREDENTIALS_JSON` ใน Railway env, `google-cloud-speech` ใน requirements |
+| Google STT ตัดคำ compound words ผิด (โปรตีน→โปร+ต+ีน) | ✅ Fixed (2026-06-24) | `_merge_close_words()` ใน `ai_service.py` merge tokens ที่มี gap ≤50ms เข้าด้วยกัน |
+| ▁ SentencePiece boundary marker โผล่ใน word chips | ✅ Fixed (2026-06-24) | strip `▁` (U+2581) ออกจาก word text ใน `_transcribe_google()` |
+| Karaoke Color mode เบลอ | ✅ Fixed (2026-06-24) | ลบ mode ออก (gradient clip เบลอ ไม่สามารถแก้ได้ใน CSS) |
+| Karaoke mode (ทั้งคู่) | ✅ Removed (2026-06-24) | ลบออก — blur issue ไม่คุ้มแก้ |
+| Subtitle ค้างในช่วงเงียบ (preview) | ✅ Fixed (2026-06-24) | `currentSeg` ใช้ exact match only ไม่ "nearest within 2s" อีกต่อไป |
+| Scale Pop export ไม่ตรง preview (สี/shadow/size) | 🟡 ดีขึ้น | ใช้ highlightColor เป็น primary, ลบ shadow/outline, export ทีละคำ active — ยังไม่ match สนิทเรื่องขนาด |
+| Subtitle ไม่ตรงเสียงตอน export | 🔴 Open | timestamps จาก Google STT ถูกต้อง (ดู words response) — น่าจะเป็น video PTS offset หรือ audio extraction drift ยังไม่พบสาเหตุ |
+| Normal mode ใส่ box ไม่ได้ | ✅ Fixed (2026-06-24) | Normal mode render ตาม `boxStyle` แล้ว (Box/Rounded/Pill hug text ไม่ยืดเต็มกว้าง), เพิ่ม BG Box toggle button ใน Options |
 | Presigned URL (R2) หมดอายุ ~2hr | ✅ Fixed (2026-06-14) | Frontend (`VideoEditor.tsx`) refresh `videoUrl` ทุก 50 นาที (ก่อนหมดอายุ) พร้อม restore playback position/state |
 | `seeking to: 0` re-render loop | ✅ Fixed | แก้โดยแยก video event-listener effect |
 | Word chip editor accumulate ซ้ำ | ✅ Fixed | ใช้ `word.start` เป็น key, ไม่ rebuild words ใน `updateSeg`/`saveSubtitles` |
@@ -258,4 +266,17 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-*Last updated: 2026-06-15 — export style matching: better but still not pixel-matching preview, investigating*
+---
+
+## 8. Session Log
+
+### 2026-06-24
+- เปลี่ยน ASR เป็น Google Cloud STT (`latest_long`, `th-TH`) แทน AssemblyAI — Thai accuracy ดีขึ้นมาก
+- `_merge_close_words()` fix compound word splits (โปรตีน, กระปุก, L-carnitine) gap ≤50ms
+- Strip ▁ SentencePiece boundary marker จาก STT output
+- ลบ Karaoke / Karaoke Color modes ออก (blur/rendering issues)
+- แก้ subtitle ค้างช่วงเงียบ — exact match only ใน `currentSeg`
+- Scale Pop export: ใช้ highlightColor, ลบ shadow/outline, fix JASSUB preview size
+- Normal mode: รองรับ Box/Rounded/Pill style (hug text), เพิ่ม BG Box toggle button, default bgOpacity=0
+
+*Last updated: 2026-06-24*
