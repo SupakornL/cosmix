@@ -398,6 +398,35 @@ Style: Box,{system_font},{int(round(size))},&H00FFFFFF,&H00FFFFFF,&H00000000,&H0
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     ass_lines = [ass_header]
+
+    # Scale Pop: build context window (2 words before + active + 2 after) with ASS inline tags
+    is_scale_pop = display_mode in ('scale_pop', 'scale_pop_bold')
+    if is_scale_pop and len(subtitles) > 0:
+        hl_hex_raw = subtitle_style.get('highlightColor', '#FFFF00').lstrip('#').upper()
+        hl_ass_bgr = hl_hex_raw[4:6] + hl_hex_raw[2:4] + hl_hex_raw[0:2] if len(hl_hex_raw) == 6 else 'FFFFFF'
+        ctx_color = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
+        ctx_ass_bgr = ctx_color[4:6] + ctx_color[2:4] + ctx_color[0:2] if len(ctx_color) == 6 else 'FFFFFF'
+        base_size = subtitle_style.get('fontSize', 24)
+        if preview_width and preview_width > 0:
+            base_size = base_size * (vid_w / preview_width)
+        active_size = int(round(base_size * 1.6))
+        ctx_size = int(round(base_size * 0.85))
+        WINDOW = 2
+        for idx, sub in enumerate(subtitles):
+            s_start = fmt_time_ass(sub.start)
+            s_end = fmt_time_ass(sub.end)
+            parts = []
+            for j in range(max(0, idx - WINDOW), min(len(subtitles), idx + WINDOW + 1)):
+                w = subtitles[j]
+                if j == idx:
+                    parts.append(f"{{\\fs{active_size}\\1c&H{hl_ass_bgr}&\\bord2\\shad1}} {w.text} ")
+                else:
+                    alpha = 'A0' if j < idx else '60'
+                    parts.append(f"{{\\fs{ctx_size}\\1c&H{ctx_ass_bgr}&\\1a&H{alpha}&\\bord1\\shad1}} {w.text} ")
+            text_prefix = f"{{{pos_tag}}}"
+            ass_lines.append(f"Dialogue: 0,{s_start},{s_end},Default,,0,0,0,,{text_prefix}{''.join(parts)}\n")
+        return "".join(ass_lines)
+
     for sub in subtitles:
         start = fmt_time_ass(sub.start)
         end = fmt_time_ass(sub.end)
