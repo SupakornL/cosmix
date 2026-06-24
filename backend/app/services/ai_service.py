@@ -330,7 +330,11 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
                 continue
             start = w.start_time.total_seconds()
             end = w.end_time.total_seconds()
-            # Google STT already segments Thai words correctly — use as-is
+            # Cap word duration: Google STT sometimes returns end_time = next speech onset
+            # (across long silences), making one word appear to last 10-15 seconds.
+            # Estimate realistic max: 100ms/char, minimum 300ms.
+            max_dur = max(0.3, len(word_text) * 0.1)
+            end = min(end, start + max_dur)
             raw_words.append({"word": word_text, "start": round(start, 3), "end": round(end, 3)})
 
     full_text = " ".join(full_text_parts)
