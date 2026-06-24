@@ -201,9 +201,9 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | ▁ SentencePiece boundary marker โผล่ใน word chips | ✅ Fixed (2026-06-24) | strip `▁` (U+2581) ออกจาก word text ใน `_transcribe_google()` |
 | Karaoke Color mode เบลอ | ✅ Fixed (2026-06-24) | ลบ mode ออก (gradient clip เบลอ ไม่สามารถแก้ได้ใน CSS) |
 | Karaoke mode (ทั้งคู่) | ✅ Removed (2026-06-24) | ลบออก — blur issue ไม่คุ้มแก้ |
-| Subtitle ค้างในช่วงเงียบ (preview) | 🟡 Partial (2026-06-24) | `currentSeg` exact match แก้ได้บางส่วน แต่ยังค้างถ้า segment end_time จาก Google STT ยาวเลยเข้าช่วงเงียบ — `_group_words_into_segments` trim end ให้ไม่เกิน next_start-50ms แล้ว (deploy 2026-06-24) แต่ยังไม่ verify |
+| Subtitle ค้างในช่วงเงียบ (preview) | ✅ Fixed (2026-06-25) | word duration cap (100ms/char, min 300ms) + gap-aware segment grouping (split ที่ gap > 1s) — ทำให้ subtitle หายช่วงเงียบ |
 | Scale Pop export ไม่ตรง preview (สี/shadow/size) | 🟡 ดีขึ้น | ใช้ highlightColor เป็น primary, ลบ shadow/outline, export ทีละคำ active — ยังไม่ match สนิทเรื่องขนาด |
-| Subtitle ไม่ตรงเสียงตอน export | 🔴 Open | timestamps จาก Google STT ถูกต้อง (ดู words response) — น่าจะเป็น video PTS offset หรือ audio extraction drift ยังไม่พบสาเหตุ |
+| Subtitle ไม่ตรงเสียงตอน export | ✅ Fixed (2026-06-25) | เพิ่ม `setpts=PTS-STARTPTS` + `asetpts=PTS-STARTPTS` ก่อน ASS filter ใน ffmpeg export — normalize PTS เริ่มที่ 0 |
 | Normal mode ใส่ box ไม่ได้ | ✅ Fixed (2026-06-24) | Normal mode render ตาม `boxStyle` แล้ว (Box/Rounded/Pill hug text ไม่ยืดเต็มกว้าง), เพิ่ม BG Box toggle button ใน Options |
 | Presigned URL (R2) หมดอายุ ~2hr | ✅ Fixed (2026-06-14) | Frontend (`VideoEditor.tsx`) refresh `videoUrl` ทุก 50 นาที (ก่อนหมดอายุ) พร้อม restore playback position/state |
 | `seeking to: 0` re-render loop | ✅ Fixed | แก้โดยแยก video event-listener effect |
@@ -270,10 +270,13 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ## 8. Session Log
 
-### 2026-06-24 (session 2 — ต่อ)
-- `_merge_close_words`: ปรับ max_gap 50ms→20ms + เพิ่ม max_merged_chars=6 — ป้องกัน merge ทั้งประโยคเป็น 2 segment ใหญ่
-- `_group_words_into_segments`: trim segment `end` ให้ไม่เกิน next_start-50ms เพื่อกำจัด subtitle ค้างช่วงเงียบ (ยัง pending verify)
-- ยังเปิด: subtitle ค้างช่วงเงียบ (รอ Railway deploy + re-upload verify), subtitle ไม่ตรงเสียงใน export
+### 2026-06-25
+- **Subtitle ค้างช่วงเงียบ (Fixed)**: word duration cap 100ms/char (min 300ms) + gap-aware segment grouping (split ที่ gap > 1s) + ลบ segment-end extension bug
+- **Subtitle ไม่ตรงเสียง export (Fixed)**: `setpts=PTS-STARTPTS` + `asetpts=PTS-STARTPTS` normalize PTS
+- **Merge over-aggressive (Fixed)**: max_gap 50ms→20ms + max_merged_chars=6
+- **Loanword post-processing**: `_fix_loanwords()` merge lcar+nitine → L-Carnitine (regex search รองรับ Thai prefix)
+- **Speech contexts**: boost=10 สำหรับคำ supplement/product ที่ Google STT ผิดบ่อย
+- **Landing page**: เพิ่ม parallax nebula background + bottom fade gradient
 
 ### 2026-06-24
 - เปลี่ยน ASR เป็น Google Cloud STT (`latest_long`, `th-TH`) แทน AssemblyAI — Thai accuracy ดีขึ้นมาก
