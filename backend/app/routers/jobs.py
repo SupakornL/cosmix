@@ -276,7 +276,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # libass renders fonts ~15% smaller than CSS at the same nominal px size,
     # so we compensate with a 1.15x multiplier.
     if preview_width and preview_width > 0:
-        size = size * (vid_w / preview_width) * 1.15
+        size = size * (vid_w / preview_width) * 1.35
 
     color_hex = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
     bold = 1 if subtitle_style.get('bold', True) else 0
@@ -410,7 +410,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ctx_ass_bgr = ctx_color[4:6] + ctx_color[2:4] + ctx_color[0:2] if len(ctx_color) == 6 else 'FFFFFF'
         base_size = subtitle_style.get('fontSize', 24)
         if preview_width and preview_width > 0:
-            base_size = base_size * (vid_w / preview_width) * 1.15
+            base_size = base_size * (vid_w / preview_width) * 1.35
         active_size = int(round(base_size * 1.6))
         ctx_size = int(round(base_size * 0.85))
         WINDOW = 2
@@ -421,10 +421,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             for j in range(max(0, idx - WINDOW), min(len(subtitles), idx + WINDOW + 1)):
                 w = subtitles[j]
                 if j == idx:
-                    parts.append(f"{{\\fs{active_size}\\1c&H{hl_ass_bgr}&\\bord0\\shad0}} {w.text} ")
+                    parts.append(f"{{\\fs{active_size}\\1c&H{hl_ass_bgr}&\\bord1.5\\shad1\\3c&H000000&\\4c&H000000&}} {w.text} ")
                 else:
                     alpha = 'A0' if j < idx else '60'
-                    parts.append(f"{{\\fs{ctx_size}\\1c&H{ctx_ass_bgr}&\\1a&H{alpha}&\\bord0\\shad0}} {w.text} ")
+                    parts.append(f"{{\\fs{ctx_size}\\1c&H{ctx_ass_bgr}&\\1a&H{alpha}&\\bord1\\shad0.5\\3c&H000000&}} {w.text} ")
             text_prefix = f"{{{pos_tag}}}"
             ass_lines.append(f"Dialogue: 0,{s_start},{s_end},Default,,0,0,0,,{text_prefix}{''.join(parts)}\n")
         return "".join(ass_lines)
