@@ -419,10 +419,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             for j in range(max(0, idx - WINDOW), min(len(subtitles), idx + WINDOW + 1)):
                 w = subtitles[j]
                 if j == idx:
-                    parts.append(f"{{\\fs{active_size}\\1c&H{hl_ass_bgr}&\\bord2\\shad1}} {w.text} ")
+                    parts.append(f"{{\\fs{active_size}\\1c&H{hl_ass_bgr}&\\bord0\\shad0}} {w.text} ")
                 else:
                     alpha = 'A0' if j < idx else '60'
-                    parts.append(f"{{\\fs{ctx_size}\\1c&H{ctx_ass_bgr}&\\1a&H{alpha}&\\bord1\\shad1}} {w.text} ")
+                    parts.append(f"{{\\fs{ctx_size}\\1c&H{ctx_ass_bgr}&\\1a&H{alpha}&\\bord0\\shad0}} {w.text} ")
             text_prefix = f"{{{pos_tag}}}"
             ass_lines.append(f"Dialogue: 0,{s_start},{s_end},Default,,0,0,0,,{text_prefix}{''.join(parts)}\n")
         return "".join(ass_lines)
