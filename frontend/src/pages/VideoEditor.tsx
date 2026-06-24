@@ -508,6 +508,15 @@ export default function VideoEditor() {
   const user = useAuthStore(s => s.user)
 
   const videoRef = useRef<HTMLVideoElement>(null)
+  // Actual rendered video content width (excludes letterbox/pillarbox black bars)
+  function getVideoContentWidth(): number {
+    const v = videoRef.current
+    if (!v || !v.videoWidth || !v.videoHeight) return v?.getBoundingClientRect().width || 0
+    const rect = v.getBoundingClientRect()
+    const videoAR = v.videoWidth / v.videoHeight
+    const elemAR = rect.width / rect.height
+    return videoAR > elemAR ? rect.width : rect.height * videoAR
+  }
   const [videoUrl, setVideoUrl] = useState('')
   const [segments, setSegments] = useState<Segment[]>([])
   const [words, setWords] = useState<WordStamp[]>([])
@@ -637,7 +646,7 @@ export default function VideoEditor() {
             subtitles: buildExportSubtitles(),
             vid_w: v.videoWidth,
             vid_h: v.videoHeight,
-            previewWidth: v.getBoundingClientRect().width || 0,
+            previewWidth: getVideoContentWidth(),
           }),
         })
         if (res.ok) { const d = await res.json(); setAssContent(d.ass) }
@@ -757,7 +766,7 @@ export default function VideoEditor() {
     try {
       const exportSubtitles = buildExportSubtitles()
 
-      const previewWidth = videoRef.current?.getBoundingClientRect().width || 0
+      const previewWidth = getVideoContentWidth()
 
       // Measure actual average character width in CSS pixels using canvas 2d so
       // the backend can draw pill/rounded boxes that match exactly what the browser renders,
