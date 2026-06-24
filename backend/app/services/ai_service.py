@@ -289,6 +289,17 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
                     "fr": "fr-FR", "de": "de-DE", "es": "es-ES", "vi": "vi-VN", "id": "id-ID"}
         lang_code = lang_map.get(language, "th-TH")
 
+    # Boost recognition of common Thai product/brand/supplement terms
+    speech_contexts = [speech.SpeechContext(
+        phrases=[
+            "L-carnitine", "carnitine", "whey protein", "BCAA", "creatine",
+            "โปรตีน", "วิตามิน", "แคลอรี่", "คาร์บ", "ไขมัน",
+            "กระปุก", "ซอง", "แคปซูล", "เม็ด", "สกู๊ป",
+            "กรัม", "มิลลิกรัม", "แคล",
+        ],
+        boost=10.0,
+    )]
+
     audio = speech.RecognitionAudio(content=audio_bytes)
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.MP3,
@@ -297,6 +308,7 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
         enable_word_time_offsets=True,
         enable_automatic_punctuation=True,
         model="latest_long",
+        speech_contexts=speech_contexts,
     )
 
     loop = asyncio.get_event_loop()
