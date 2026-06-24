@@ -146,17 +146,22 @@ def _fix_loanwords(words: list) -> list:
     return result
 
 
-def _group_words_into_segments(raw_words: list, words_per_segment: int = 4) -> list:
+def _group_words_into_segments(raw_words: list, words_per_segment: int = 4, max_gap: float = 1.0) -> list:
+    """Group words into display segments. Starts a new segment when either
+    words_per_segment is reached or a gap > max_gap exists between words."""
     segments = []
-    for i in range(0, len(raw_words), words_per_segment):
-        chunk = raw_words[i:i + words_per_segment]
-        text = "".join(w["word"] for w in chunk)
-        segments.append({
-            "id": i // words_per_segment,
-            "start": chunk[0]["start"],
-            "end": chunk[-1]["end"],
-            "text": text,
-        })
+    chunk: list = []
+    seg_id = 0
+    for w in raw_words:
+        if chunk and (len(chunk) >= words_per_segment or w["start"] - chunk[-1]["end"] > max_gap):
+            text = "".join(c["word"] for c in chunk)
+            segments.append({"id": seg_id, "start": chunk[0]["start"], "end": chunk[-1]["end"], "text": text})
+            seg_id += 1
+            chunk = []
+        chunk.append(w)
+    if chunk:
+        text = "".join(c["word"] for c in chunk)
+        segments.append({"id": seg_id, "start": chunk[0]["start"], "end": chunk[-1]["end"], "text": text})
     return segments
 
 
