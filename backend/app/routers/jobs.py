@@ -561,6 +561,8 @@ async def export_video(
     speed = body.speed
     volume = body.volume
 
+    print(f"[export] job={job_id} vid={vid_w}x{vid_h} previewWidth={body.previewWidth} fontSize={subtitle_style.get('fontSize')} mode={subtitle_style.get('displayMode')}")
+
     ass_content = build_ass_content(
         subtitle_style=subtitle_style,
         subtitles=subtitles,
