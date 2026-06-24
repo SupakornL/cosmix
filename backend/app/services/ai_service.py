@@ -114,12 +114,13 @@ def _merge_close_words(raw_words: list, max_gap: float = 0.02, max_merged_chars:
 
 
 _WORD_FIXES = [
-    (re.compile(r'^l\s*car$', re.I), re.compile(r'^n[io]t[io]ne?$', re.I), "L-Carnitine"),
-    (re.compile(r'^wh?ey$', re.I), re.compile(r'^pro\s*t[eé][io]n$', re.I), "Whey Protein"),
+    (re.compile(r'l\s*car$', re.I), re.compile(r'^n[io]t[io]ne?$', re.I), "L-Carnitine"),
+    (re.compile(r'wh?ey$', re.I), re.compile(r'^pro\s*t[eé][io]n$', re.I), "Whey Protein"),
 ]
 
 def _fix_loanwords(words: list) -> list:
-    """Merge consecutive tokens that form known loanwords (e.g. lcar+nitine → L-Carnitine)."""
+    """Merge consecutive tokens that form known loanwords (e.g. ก็lcar+nitine → ก็L-Carnitine).
+    Preserves any Thai prefix attached to the first token."""
     if len(words) < 2:
         return words
     result = []
@@ -128,9 +129,11 @@ def _fix_loanwords(words: list) -> list:
         matched = False
         if i + 1 < len(words):
             for pat_a, pat_b, replacement in _WORD_FIXES:
-                if pat_a.match(words[i]["word"]) and pat_b.match(words[i + 1]["word"]):
+                m = pat_a.search(words[i]["word"])
+                if m and pat_b.match(words[i + 1]["word"]):
+                    prefix = words[i]["word"][:m.start()]
                     result.append({
-                        "word": replacement,
+                        "word": prefix + replacement,
                         "start": words[i]["start"],
                         "end": words[i + 1]["end"],
                     })
