@@ -113,6 +113,36 @@ def _merge_close_words(raw_words: list, max_gap: float = 0.02, max_merged_chars:
     return merged
 
 
+_WORD_FIXES = [
+    (re.compile(r'^l\s*car$', re.I), re.compile(r'^n[io]t[io]ne?$', re.I), "L-Carnitine"),
+    (re.compile(r'^wh?ey$', re.I), re.compile(r'^pro\s*t[eé][io]n$', re.I), "Whey Protein"),
+]
+
+def _fix_loanwords(words: list) -> list:
+    """Merge consecutive tokens that form known loanwords (e.g. lcar+nitine → L-Carnitine)."""
+    if len(words) < 2:
+        return words
+    result = []
+    i = 0
+    while i < len(words):
+        matched = False
+        if i + 1 < len(words):
+            for pat_a, pat_b, replacement in _WORD_FIXES:
+                if pat_a.match(words[i]["word"]) and pat_b.match(words[i + 1]["word"]):
+                    result.append({
+                        "word": replacement,
+                        "start": words[i]["start"],
+                        "end": words[i + 1]["end"],
+                    })
+                    i += 2
+                    matched = True
+                    break
+        if not matched:
+            result.append(words[i])
+            i += 1
+    return result
+
+
 def _group_words_into_segments(raw_words: list, words_per_segment: int = 4) -> list:
     segments = []
     for i in range(0, len(raw_words), words_per_segment):
@@ -344,6 +374,7 @@ async def _transcribe_google(audio_path: str, language: str) -> dict:
         raise ValueError("Google STT returned no word timestamps")
 
     raw_words = _merge_close_words(raw_words)
+    raw_words = _fix_loanwords(raw_words)
     segments = _group_words_into_segments(raw_words)
     return {"text": full_text, "language": lang_code, "segments": segments, "words": raw_words}
 
