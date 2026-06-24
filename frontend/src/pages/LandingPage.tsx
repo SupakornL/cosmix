@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import nebulaBg from '../assets/nebula-bg.png'
 
 const STARS = Array.from({ length: 180 }, (_, i) => ({
   id: i,
@@ -87,6 +88,12 @@ export default function LandingPage() {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-12px); }
         }
+        @keyframes nebula-drift {
+          0% { transform: scale(1.05) translate(0, 0); }
+          33% { transform: scale(1.12) translate(-1.5%, -1%); }
+          66% { transform: scale(1.08) translate(1%, -0.5%); }
+          100% { transform: scale(1.05) translate(0, 0); }
+        }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(32px); }
           to { opacity: 1; transform: translateY(0); }
@@ -158,6 +165,24 @@ export default function LandingPage() {
         }
         .nav-link:hover { color: #E2E8F0; }
       `}</style>
+
+      {/* === NEBULA PARALLAX BG === */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute', inset: '-10%',
+          backgroundImage: `url(${nebulaBg})`,
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          animation: 'nebula-drift 40s ease-in-out infinite',
+          opacity: 0.45,
+          transform: `translateY(${scrollY * 0.08}px)`,
+        }} />
+        {/* Bottom fade — seamless blend into dark background */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '60%',
+          background: 'linear-gradient(to bottom, transparent 0%, rgba(6,10,18,0.4) 30%, rgba(6,10,18,0.85) 60%, #060A12 85%)',
+          pointerEvents: 'none',
+        }} />
+      </div>
 
       {/* === STARS BG === */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
