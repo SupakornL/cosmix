@@ -558,19 +558,26 @@ async def export_video(
     if trim.end > 0:
         cmd += ['-to', str(trim.end)]
 
-    # Build filter
+    # Build video filter — normalize PTS first so subtitle timestamps (starting at 0)
+    # align with video frames even if the source has a non-zero start PTS.
     filters = []
+    if subtitles or speed != 1:
+        filters.append('setpts=PTS-STARTPTS')
     if subtitles:
         filters.append(f"ass={srt_path}")
-    
     if speed != 1:
         filters.append(f"setpts={1/speed}*PTS")
 
     if filters:
         cmd += ['-vf', ','.join(filters)]
 
+    audio_filters = []
+    if subtitles or speed != 1:
+        audio_filters.append('asetpts=PTS-STARTPTS')
     if volume != 1:
-        cmd += ['-af', f'volume={volume}']
+        audio_filters.append(f'volume={volume}')
+    if audio_filters:
+        cmd += ['-af', ','.join(audio_filters)]
 
     # Without explicit encoding params ffmpeg falls back to a low-quality default
     # (libx264 ultrafast-ish settings), making the export noticeably blurrier than
