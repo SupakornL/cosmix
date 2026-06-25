@@ -329,7 +329,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         radius_css = 20 if box_style == 'pill' else 6
     else:
         # word_single and normal/segment modes both use the larger box padding
-        pad_x_css, pad_y_css = 16, 4
+        pad_x_css, pad_y_css = 16, 1
         radius_css = 30 if box_style == 'pill' else 8
     # CSS applies textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 3px rgba(0,0,0,0.8)'
     # Scale both shadow and outline by css_scale so they stay proportionally visible
@@ -455,7 +455,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
             # Thai line-height needs extra room for tall stacked vowels/tone marks
             # (e.g. ิ์ ๊ ุ) above and below the base line — 1.2x clips them.
-            line_h = size * 0.9
+            line_h = size * 0.85
             pad_x = pad_x_css * css_scale
             pad_y = pad_y_css * css_scale
             box_w = text_w + 2 * pad_x
@@ -489,8 +489,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text_prefix = f"{{\\an5\\pos({box_center_x:.1f},{box_center_y:.1f})}}"
             ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
         else:
-            text_prefix = f"{{{pos_tag}}}"
-            ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
+            if shadow_on and border_style != 4:
+                shad_sz = max(2, int(css_scale * 2))
+                shadow_prefix = f"{{{pos_tag}\\1c&H000000&\\1a&H20&\\bord{shad_sz}\\shad0\\blur{max(3, int(css_scale * 3))}}}"
+                ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{shadow_prefix}{text}\n")
+            text_prefix = f"{{{pos_tag}\\shad0\\bord0}}"
+            ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
 
     return "".join(ass_lines)
 
