@@ -276,7 +276,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # libass renders fonts ~15% smaller than CSS at the same nominal px size,
     # so we compensate with a 1.15x multiplier.
     if preview_width and preview_width > 0:
-        size = size * (vid_w / preview_width) * 1.5
+        size = size * (vid_w / preview_width) * 1.8
 
     color_hex = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
     bold = 1 if subtitle_style.get('bold', True) else 0
@@ -320,7 +320,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # editor (gradient-fill text / bare scaled spans), so never draw one for export either.
     no_box_modes = ('karaoke_color', 'scale_pop', 'scale_pop_bold')
     use_drawn_box = box_style in ('rounded_solid', 'pill') and display_mode not in no_box_modes
-    css_scale = (vid_w / preview_width) if preview_width else 1
+    css_scale = (vid_w / preview_width * 1.8) if preview_width else 1
     # Padding/radius values mirror the CSS the editor actually uses per display mode
     # (VideoEditor.tsx wordStyle/word_single/segment box styles), converted to ASS units.
     word_modes = ('word_trail', 'word_pop', 'karaoke', 'karaoke_color')
@@ -410,7 +410,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ctx_ass_bgr = ctx_color[4:6] + ctx_color[2:4] + ctx_color[0:2] if len(ctx_color) == 6 else 'FFFFFF'
         base_size = subtitle_style.get('fontSize', 24)
         if preview_width and preview_width > 0:
-            base_size = base_size * (vid_w / preview_width) * 1.5
+            base_size = base_size * (vid_w / preview_width) * 1.8
         active_size = int(round(base_size * 1.6))
         ctx_size = int(round(base_size * 0.85))
         WINDOW = 2
