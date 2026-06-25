@@ -339,7 +339,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         shadow_val = 0
         outline_on = False
     else:
-        shadow_val = 0
+        shadow_val = max(2, int(css_scale * 1.5)) if shadow_on else 0
     if use_drawn_box:
         back_color = "&H00000000"
         border_style = 1
@@ -357,9 +357,9 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         outline_val = 6
         shadow_val = 0    # BorderStyle=4 doesn't support a separate text shadow
     else:
-        back_color = "&H00000000"
+        back_color = "&H80000000"
         border_style = 1
-        outline_val = 2 if outline_on else 0
+        outline_val = 0
 
     # CSS SubtitleRenderer places the subtitle center at these % from top of the video
     # element (position: absolute; top: X%; transform: translate(-50%,-50%)).
@@ -489,12 +489,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text_prefix = f"{{\\an5\\pos({box_center_x:.1f},{box_center_y:.1f})}}"
             ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
         else:
-            shad_offset = max(1, int(css_scale * 1.5))
-            if shadow_on and border_style != 4:
-                shadow_tag = f"{{{pos_tag}\\1a&HFF&\\3a&HFF&\\4c&H000000&\\4a&H60&\\shad{shad_offset}\\blur{max(2, int(css_scale * 2))}}}"
-                ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{shadow_tag}{text}\n")
             text_prefix = f"{{{pos_tag}}}"
-            ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
+            ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
 
     return "".join(ass_lines)
 
