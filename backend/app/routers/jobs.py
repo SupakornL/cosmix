@@ -335,14 +335,11 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # Scale both shadow and outline by css_scale so they stay proportionally visible
     # at the export resolution (2 ASS units in PlayResX=1080 ≈ 0.7 display px — invisible).
     # scale_pop relies on the word standing out on its own — shadow/outline adds clutter
-    # Use soft blur shadow instead of hard outline for a fade effect matching CSS textShadow
-    blur_val = max(2, int(css_scale * 2)) if shadow_on else 0
     if display_mode in ('scale_pop', 'scale_pop_bold'):
         shadow_val = 0
         outline_on = False
-        blur_val = 0
     else:
-        shadow_val = max(1, int(css_scale)) if shadow_on else 0
+        shadow_val = max(2, int(css_scale * 2)) if shadow_on else 0
     if use_drawn_box:
         back_color = "&H00000000"
         border_style = 1
@@ -489,12 +486,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             box_alpha, box_bgr = box_fill_color[2:4], box_fill_color[4:10]
             override = f"{{\\an7\\pos({box_x:.1f},{box_y:.1f})\\p1\\1a&H{box_alpha}&\\1c&H{box_bgr}&}}{drawing}{{\\p0}}"
             ass_lines.append(f"Dialogue: 0,{start},{end},Box,,0,0,0,,{override}\n")
-            blur_tag = f"\\blur{blur_val}" if blur_val else ""
-            text_prefix = f"{{\\an5\\pos({box_center_x:.1f},{box_center_y:.1f}){blur_tag}}}"
+            text_prefix = f"{{\\an5\\pos({box_center_x:.1f},{box_center_y:.1f})}}"
             ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
         else:
-            blur_tag = f"\\blur{blur_val}" if blur_val else ""
-            text_prefix = f"{{{pos_tag}{blur_tag}}}"
+            text_prefix = f"{{{pos_tag}}}"
             ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
 
     return "".join(ass_lines)
