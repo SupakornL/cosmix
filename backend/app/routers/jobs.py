@@ -276,7 +276,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # libass renders fonts ~15% smaller than CSS at the same nominal px size,
     # so we compensate with a 1.15x multiplier.
     if preview_width and preview_width > 0:
-        size = size * (vid_w / preview_width) * 1.8
+        size = size * (vid_w / preview_width) * 2.0
 
     color_hex = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
     bold = 1 if subtitle_style.get('bold', True) else 0
@@ -410,7 +410,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ctx_ass_bgr = ctx_color[4:6] + ctx_color[2:4] + ctx_color[0:2] if len(ctx_color) == 6 else 'FFFFFF'
         base_size = subtitle_style.get('fontSize', 24)
         if preview_width and preview_width > 0:
-            base_size = base_size * (vid_w / preview_width) * 1.8
+            base_size = base_size * (vid_w / preview_width) * 2.0
         active_size = int(round(base_size * 1.6))
         ctx_size = int(round(base_size * 0.85))
         WINDOW = 2
@@ -456,7 +456,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
             # Thai line-height needs extra room for tall stacked vowels/tone marks
             # (e.g. ิ์ ๊ ุ) above and below the base line — 1.2x clips them.
-            line_h = size * 1.35
+            line_h = size * 1.1
             pad_x = pad_x_css * css_scale
             pad_y = pad_y_css * css_scale
             box_w = text_w + 2 * pad_x
