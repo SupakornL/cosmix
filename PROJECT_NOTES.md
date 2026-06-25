@@ -193,7 +193,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
-| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | 🟡 ดีขึ้นมากแล้ว แต่ยังไม่ match สนิท | วาด rounded-rect ด้วย ASS vector drawing + แก้ width/line-height estimate + centering + font-size multiplier ตาม displayMode, ดูหัวข้อ 4 — พี่บอส feedback 2026-06-15 ว่ายังไม่ match สนิท (กำลังหาว่าจุดไหน) |
+| Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed (2026-06-26) | font 2.0x multiplier, line_h 0.85, pad_y 1, thin outline — pill box ขนาดใกล้เคียง preview |
 | Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
 | Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 (Apollo research 2026-06-14: MMS/wav2vec2 forced-aligner เป็นทางเลือกที่ดูคุ้มที่สุดถ้าจะทำในอนาคต แต่ยังไม่คุ้มตอนนี้ — ต้อง verify ตัวเลขจริงก่อน) |
 | Thai transcription ผิด/สะกดผิดบางคำ | ✅ Fixed (2026-06-24) | เปลี่ยน ASR เป็น Google Cloud STT (latest_long model, th-TH) แทน AssemblyAI — accuracy ดีขึ้นมาก เพิ่ม `GOOGLE_CLOUD_CREDENTIALS_JSON` ใน Railway env, `google-cloud-speech` ใน requirements |
@@ -202,7 +202,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | Karaoke Color mode เบลอ | ✅ Fixed (2026-06-24) | ลบ mode ออก (gradient clip เบลอ ไม่สามารถแก้ได้ใน CSS) |
 | Karaoke mode (ทั้งคู่) | ✅ Removed (2026-06-24) | ลบออก — blur issue ไม่คุ้มแก้ |
 | Subtitle ค้างในช่วงเงียบ (preview) | ✅ Fixed (2026-06-25) | word duration cap (100ms/char, min 300ms) + gap-aware segment grouping (split ที่ gap > 1s) — ทำให้ subtitle หายช่วงเงียบ |
-| Scale Pop export ไม่ตรง preview (สี/shadow/size) | 🟡 ดีขึ้น | ใช้ highlightColor เป็น primary, ลบ shadow/outline, export ทีละคำ active — ยังไม่ match สนิทเรื่องขนาด |
+| Scale Pop export ไม่ตรง preview (สี/shadow/size) | ✅ Fixed (2026-06-26) | context window 5 คำ, font 2.0x multiplier, thin outline — เงา CSS blur ทำใน ASS ไม่ได้เป๊ะ แต่ใช้ได้ดี |
 | Subtitle ไม่ตรงเสียงตอน export | ✅ Fixed (2026-06-25) | เพิ่ม `setpts=PTS-STARTPTS` + `asetpts=PTS-STARTPTS` ก่อน ASS filter ใน ffmpeg export — normalize PTS เริ่มที่ 0 |
 | Normal mode ใส่ box ไม่ได้ | ✅ Fixed (2026-06-24) | Normal mode render ตาม `boxStyle` แล้ว (Box/Rounded/Pill hug text ไม่ยืดเต็มกว้าง), เพิ่ม BG Box toggle button ใน Options |
 | Presigned URL (R2) หมดอายุ ~2hr | ✅ Fixed (2026-06-14) | Frontend (`VideoEditor.tsx`) refresh `videoUrl` ทุก 50 นาที (ก่อนหมดอายุ) พร้อม restore playback position/state |
@@ -270,6 +270,16 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ## 8. Session Log
 
+### 2026-06-26
+- **Export font size (Fixed)**: เพิ่ม 2.0x multiplier ชดเชย libass vs CSS rendering + `getVideoContentWidth()` คำนวณ content width จริง (ไม่รวม black bars)
+- **Export pill box (Fixed)**: line_h 1.35→0.85, pad_y 4→1 — กล่องแนบตัวอักษร
+- **Scale Pop export context window (Fixed)**: แสดง 5 คำ (2 before + active + 2 after) + inline ASS tags สำหรับ active/context styling
+- **Export shadow**: ลอง blur/be/dual-layer → ASS ไม่รองรับ CSS text-shadow blur จริงๆ ใช้ thin outline แทน
+- **Export PTS offset (Fixed)**: `setpts=PTS-STARTPTS` + `asetpts=PTS-STARTPTS`
+- **Gap-aware segment grouping**: split ที่ gap > 1s แทน fixed 4-word chunks
+- **Landing page**: parallax nebula background + bottom fade gradient
+- **Known limitation**: CSS text-shadow blur ทำใน ASS ไม่ได้เป๊ะ — ถ้าต้องการต้องเปลี่ยน export เป็น browser-based rendering
+
 ### 2026-06-25
 - **Subtitle ค้างช่วงเงียบ (Fixed)**: word duration cap 100ms/char (min 300ms) + gap-aware segment grouping (split ที่ gap > 1s) + ลบ segment-end extension bug
 - **Subtitle ไม่ตรงเสียง export (Fixed)**: `setpts=PTS-STARTPTS` + `asetpts=PTS-STARTPTS` normalize PTS
@@ -287,4 +297,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 - Scale Pop export: ใช้ highlightColor, ลบ shadow/outline, fix JASSUB preview size
 - Normal mode: รองรับ Box/Rounded/Pill style (hug text), เพิ่ม BG Box toggle button, default bgOpacity=0
 
-*Last updated: 2026-06-24*
+*Last updated: 2026-06-26*
