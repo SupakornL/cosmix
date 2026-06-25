@@ -189,7 +189,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-24)
+## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-26)
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
@@ -221,6 +221,14 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | `hex_to_ass` ไม่ validate input color hex | ✅ Fixed (2026-06-14) | ถ้า hex หลัง `zfill(6)` ไม่ match `[0-9A-F]{6}` (เช่น ผิดรูปแบบ/ยาวเกิน) จะ fallback เป็น `FFFFFF` แทน |
 | `job.output_s3_key` เก็บ local path แทน R2 key | ✅ Fixed (2026-06-19) | `tasks.py` upload processed output ขึ้น R2 (`outputs/{job_id}.mp4`) ก่อน commit — วิดีโอ preview ไม่หายหลัง Railway restart แล้ว |
 | Trial copy ไม่ตรงกัน (UI บอก 5 วัน แต่ backend ให้ 7 วัน) | ✅ Fixed (2026-06-19) | แก้ LandingPage, PricingPage, LoginPage ให้เป็น "7 วัน" ตรงกับ `TRIAL_DAYS=7` |
+
+### Known Limitations (ข้อจำกัดของเทคโนโลยี)
+
+| ข้อจำกัด | สาเหตุ | ทางแก้ที่เป็นไปได้ |
+|---|---|---|
+| Export shadow ไม่เหมือน preview (CSS text-shadow blur) | ASS format ไม่รองรับ blur radius บน shadow — ลอง `\blur`, `\be`, dual-layer แล้วไม่ได้ผลดี | เปลี่ยน export เป็น browser-based rendering (Puppeteer/Playwright) แทน ffmpeg ASS |
+| Thai word segmentation ผิดบางคำ (ด้วย→ด+วย) | Google STT word boundary detection ไม่สมบูรณ์กับ Thai | ใช้ Thai NLP post-processing (PyThaiNLP) ตรวจและรวมคำที่แยกผิด |
+| ทับศัพท์/ชื่อแบรนด์บางคำยังผิด | Google STT ไม่รู้จักคำเฉพาะทาง | เพิ่มคำใน `speech_contexts` + `_WORD_FIXES` regex เป็นรายคำ |
 
 ---
 
