@@ -320,7 +320,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
     # editor (gradient-fill text / bare scaled spans), so never draw one for export either.
     no_box_modes = ('karaoke_color', 'scale_pop', 'scale_pop_bold')
     use_drawn_box = box_style in ('rounded_solid', 'pill') and display_mode not in no_box_modes
-    css_scale = (vid_w / preview_width * 1.8) if preview_width else 1
+    css_scale = (vid_w / preview_width) if preview_width else 1
     # Padding/radius values mirror the CSS the editor actually uses per display mode
     # (VideoEditor.tsx wordStyle/word_single/segment box styles), converted to ASS units.
     word_modes = ('word_trail', 'word_pop', 'karaoke', 'karaoke_color')
