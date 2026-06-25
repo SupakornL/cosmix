@@ -195,7 +195,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 |---|---|---|
 | Export style ไม่ตรง editor (pill → กล่องเหลี่ยม) | ✅ Fixed (2026-06-26) | font 2.0x multiplier, line_h 0.85, pad_y 1, thin outline — pill box ขนาดใกล้เคียง preview |
 | Export ไม่มีเงาตัวหนังสือตอนมี pill/rounded box | ✅ Fixed | `shadow_val` เคย hardcode เป็น 0 ตอน `use_drawn_box` — แก้แล้ว ดูหัวข้อ 4 |
-| Word timing เป็น proportional ไม่ใช่จริง | 🔴 Open | ข้อจำกัด AssemblyAI ภาษาไทย — ดู note 2026-06-13 (Apollo research 2026-06-14: MMS/wav2vec2 forced-aligner เป็นทางเลือกที่ดูคุ้มที่สุดถ้าจะทำในอนาคต แต่ยังไม่คุ้มตอนนี้ — ต้อง verify ตัวเลขจริงก่อน) |
+| Word timing เป็น proportional ไม่ใช่จริง | ✅ Fixed (2026-06-24) | เปลี่ยนเป็น Google STT ที่ให้ real word timestamps (`enable_word_time_offsets=True`) — ไม่ใช่ proportional อีกต่อไป |
 | Thai transcription ผิด/สะกดผิดบางคำ | ✅ Fixed (2026-06-24) | เปลี่ยน ASR เป็น Google Cloud STT (latest_long model, th-TH) แทน AssemblyAI — accuracy ดีขึ้นมาก เพิ่ม `GOOGLE_CLOUD_CREDENTIALS_JSON` ใน Railway env, `google-cloud-speech` ใน requirements |
 | Google STT ตัดคำ compound words ผิด (โปรตีน→โปร+ต+ีน) | ✅ Fixed (2026-06-24) | `_merge_close_words()` ใน `ai_service.py` — ปรับ max_gap=20ms + max_merged_chars=6 (2026-06-24 รอบ 2) เพื่อป้องกัน over-merge ทั้งประโยค |
 | ▁ SentencePiece boundary marker โผล่ใน word chips | ✅ Fixed (2026-06-24) | strip `▁` (U+2581) ออกจาก word text ใน `_transcribe_google()` |
