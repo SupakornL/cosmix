@@ -455,7 +455,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
             # Thai line-height needs extra room for tall stacked vowels/tone marks
             # (e.g. ิ์ ๊ ุ) above and below the base line — 1.2x clips them.
-            line_h = size * 1.1
+            line_h = size * 0.9
             pad_x = pad_x_css * css_scale
             pad_y = pad_y_css * css_scale
             box_w = text_w + 2 * pad_x
