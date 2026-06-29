@@ -630,10 +630,11 @@ async def export_video(
         cmd += ['-y', output_path]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"[export] ffmpeg failed for job {job_id}: {result.stderr}")
+            err_msg = result.stderr[-500:] if result.stderr else "unknown"
+            print(f"[export] ffmpeg failed for job {job_id}: {err_msg}")
             _safe_remove(srt_path)
             _safe_remove(output_path)
-            raise HTTPException(status_code=500, detail="Failed to generate video export")
+            raise HTTPException(status_code=500, detail=f"ffmpeg: {err_msg}")
 
         background_tasks.add_task(_safe_remove, output_path)
         background_tasks.add_task(_safe_remove, wm_path)
@@ -656,10 +657,11 @@ async def export_video(
         cmd += ['-y', output_path]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"[export] ffmpeg failed for job {job_id}: {result.stderr}")
+            err_msg = result.stderr[-500:] if result.stderr else "unknown"
+            print(f"[export] ffmpeg failed for job {job_id}: {err_msg}")
             _safe_remove(srt_path)
             _safe_remove(output_path)
-            raise HTTPException(status_code=500, detail="Failed to generate video export")
+            raise HTTPException(status_code=500, detail=f"ffmpeg: {err_msg}")
         background_tasks.add_task(_safe_remove, output_path)
 
         return FileResponse(output_path, media_type="video/mp4", filename="cosmix_output.mp4")
