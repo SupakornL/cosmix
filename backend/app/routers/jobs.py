@@ -329,7 +329,7 @@ def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: 
         radius_css = 20 if box_style == 'pill' else 6
     else:
         # word_single and normal/segment modes both use the larger box padding
-        pad_x_css, pad_y_css = 16, 1
+        pad_x_css, pad_y_css = 8, 1
         radius_css = 30 if box_style == 'pill' else 8
     # CSS applies textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 3px rgba(0,0,0,0.8)'
     # Scale both shadow and outline by css_scale so they stay proportionally visible
