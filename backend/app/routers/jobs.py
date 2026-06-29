@@ -445,10 +445,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text_lines = text.split('\\N')
             # Use browser-measured char width (canvas.measureText) when available;
             # fall back to 0.62x heuristic for Thai fonts.
-            if measured_char_width_px > 0:
-                char_w = measured_char_width_px * css_scale
-            else:
-                char_w = size * 0.62
+            # Always use size-relative width — size already includes the 2.0x font multiplier
+            char_w = size * 0.62
             text_w = max(
                 (len(thai_combining.sub('', l)) * char_w for l in text_lines),
                 default=0,
