@@ -595,6 +595,12 @@ async def export_video(
     filters = []
     if subtitles or speed != 1:
         filters.append('setpts=PTS-STARTPTS')
+    # Downscale 4K+ to 1080p — Railway can't encode 4K in time
+    if vid_w > 1920 or vid_h > 1920:
+        if vid_w > vid_h:
+            filters.append('scale=1920:-2')
+        else:
+            filters.append('scale=-2:1920')
     if subtitles:
         filters.append(f"ass={srt_path}")
     if speed != 1:
