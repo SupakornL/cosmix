@@ -460,7 +460,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             pad_y = pad_y_css * css_scale
             box_w = text_w + 2 * pad_x
             box_h = len(text_lines) * line_h + 2 * pad_y
-            radius = min(radius_css * css_scale, box_w / 2, box_h / 2)
+            radius = box_h / 2 if box_style == 'pill' else min(radius_css * css_scale, box_w / 2, box_h / 2)
             # All positions now use center_x/center_y (set above from CSS % mapping)
             box_x = center_x - box_w / 2
             box_y = center_y - box_h / 2
