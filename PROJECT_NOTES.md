@@ -189,7 +189,7 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ---
 
-## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-26)
+## 5. Known Issues / Backlog (อัปเดตล่าสุด: 2026-06-30)
 
 | Issue | สถานะ | รายละเอียด |
 |---|---|---|
@@ -221,6 +221,9 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 | `hex_to_ass` ไม่ validate input color hex | ✅ Fixed (2026-06-14) | ถ้า hex หลัง `zfill(6)` ไม่ match `[0-9A-F]{6}` (เช่น ผิดรูปแบบ/ยาวเกิน) จะ fallback เป็น `FFFFFF` แทน |
 | `job.output_s3_key` เก็บ local path แทน R2 key | ✅ Fixed (2026-06-19) | `tasks.py` upload processed output ขึ้น R2 (`outputs/{job_id}.mp4`) ก่อน commit — วิดีโอ preview ไม่หายหลัง Railway restart แล้ว |
 | Trial copy ไม่ตรงกัน (UI บอก 5 วัน แต่ backend ให้ 7 วัน) | ✅ Fixed (2026-06-19) | แก้ LandingPage, PricingPage, LoginPage ให้เป็น "7 วัน" ตรงกับ `TRIAL_DAYS=7` |
+| Pill box text overflow (กล่องแคบกว่าตัวอักษร) | ✅ Fixed (2026-06-30) | `char_w = measured_char_width_px * css_scale` ไม่มี 2.0x multiplier → แก้เป็น `char_w = size * 0.62` (size รวม 2.0x แล้ว) |
+| Export 4K (3840×2160) fail 500 บน Railway | ✅ Fixed (2026-06-30) | Railway ช้าเกินไปสำหรับ 4K → auto-downscale เป็น 1920p ก่อน encode (`scale=1920:-2` หรือ `scale=-2:1920`) |
+| OG meta tags ไม่มีสำหรับ social share | ✅ Fixed (2026-06-30) | เพิ่ม og:title/description/image + twitter:card ใน `index.html` |
 
 ### Known Limitations (ข้อจำกัดของเทคโนโลยี)
 
@@ -278,6 +281,12 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ## 8. Session Log
 
+### 2026-06-30
+- **Pill box char_w fix (Fixed)**: `char_w = measured_char_width_px * css_scale` ขาด 2.0x multiplier → ข้อความหลุดกล่อง — แก้เป็น `char_w = size * 0.62` (size รวม 2.0x แล้ว)
+- **4K export fail (Fixed)**: Railway encode 3840×2160 ช้าเกินจน timeout → auto-downscale เป็น 1080p (`scale=1920:-2` / `scale=-2:1920`)
+- **OG meta tags (Fixed)**: เพิ่ม `og:title/description/image` + `twitter:card` ใน `index.html` สำหรับ social sharing
+- **Social media copy (Done)**: เขียน Thai copy สำหรับ Facebook/IG/TikTok/Twitter + โพสต์แรก
+
 ### 2026-06-26
 - **Export font size (Fixed)**: เพิ่ม 2.0x multiplier ชดเชย libass vs CSS rendering + `getVideoContentWidth()` คำนวณ content width จริง (ไม่รวม black bars)
 - **Export pill box (Fixed)**: line_h 1.35→0.85, pad_y 4→1 — กล่องแนบตัวอักษร
@@ -305,4 +314,4 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 - Scale Pop export: ใช้ highlightColor, ลบ shadow/outline, fix JASSUB preview size
 - Normal mode: รองรับ Box/Rounded/Pill style (hug text), เพิ่ม BG Box toggle button, default bgOpacity=0
 
-*Last updated: 2026-06-26*
+*Last updated: 2026-06-30*
