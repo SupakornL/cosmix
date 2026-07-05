@@ -53,7 +53,7 @@ const BOX_COLORS = ['#000000', '#7C3AED', '#EF4444', '#F59E0B', '#059669', '#3B8
 const DEFAULT_STYLE: SubStyle = {
   fontFamily: 'Sarabun', fontSize: 26, color: '#FFFFFF', highlightColor: '#FFFF00',
   bgColor: '#000000', bgOpacity: 0, position: 'bottom',
-  bold: true, italic: false, outline: true, displayMode: 'word_pop',
+  bold: true, italic: false, outline: true, displayMode: 'normal',
   showPrev: false, allCaps: false, boxStyle: 'none', boxColor: '#000000', shadow: true,
   posX: 50, posY: -1, maxCharsPerLine: 20,
 }
@@ -541,7 +541,13 @@ export default function VideoEditor() {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [style, setStyle] = useState<SubStyle>(DEFAULT_STYLE)
+  const [style, setStyle] = useState<SubStyle>(() => {
+    try {
+      const saved = localStorage.getItem('cosmix_style')
+      if (saved) return { ...DEFAULT_STYLE, ...JSON.parse(saved) }
+    } catch {}
+    return DEFAULT_STYLE
+  })
   const [trim, setTrim] = useState({ start: 0, end: 0 })
   const [volume, setVolume] = useState(1)
   const [speed, setSpeed] = useState(1)
@@ -571,6 +577,7 @@ export default function VideoEditor() {
   const [segOverrides, setSegOverrides] = useState<Record<number, Partial<SubStyle>>>({})
   const [hiddenSegs, setHiddenSegs] = useState<Set<number>>(new Set())
   const [openSegPanel, setOpenSegPanel] = useState<number | null>(null)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
   const resolveStyle = useCallback((segId: number): SubStyle => {
     const ov = segOverrides[segId]
@@ -608,6 +615,18 @@ export default function VideoEditor() {
   }, [style.displayMode])
 
   useEffect(() => { if (jobId && token) loadJob() }, [jobId, token])
+
+  // Persist style to localStorage whenever it changes
+  useEffect(() => {
+    try { localStorage.setItem('cosmix_style', JSON.stringify(style)) } catch {}
+  }, [style])
+
+  // Mobile detection
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   async function loadJob() {
     setLoading(true)
@@ -865,18 +884,69 @@ export default function VideoEditor() {
               {saveStatus === 'saving' ? '⟳ Saving...' : saveStatus === 'saved' ? '✓ Saved' : '✗ Save failed'}
             </span>
           )}
-          <button style={S.btnGhost} onClick={() => saveSubtitles(segments)}>💾 Save</button>
-          <button style={S.btnGhost} onClick={() => { const b = new Blob([exportSRT()],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='subtitle.srt'; a.click() }}>⬇ SRT</button>
-          <button style={{ ...S.btnPrimary, opacity: exporting ? 0.6 : 1 }} onClick={handleExport} disabled={exporting}>
-            {exporting ? '⟳ Exporting...' : '⬇ Export MP4'}
+          {!isMobile && <button style={S.btnGhost} onClick={() => saveSubtitles(segments)}>💾 Save</button>}
+          {!isMobile && <button style={S.btnGhost} onClick={() => { const b = new Blob([exportSRT()],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='subtitle.srt'; a.click() }}>⬇ SRT</button>}
+          <button style={{ ...S.btnPrimary, fontSize: isMobile ? 12 : 13, padding: isMobile ? '6px 10px' : '7px 16px', opacity: exporting ? 0.6 : 1 }} onClick={handleExport} disabled={exporting}>
+            {exporting ? '⟳...' : isMobile ? '⬇ Export' : '⬇ Export MP4'}
           </button>
         </div>
       </nav>
 
-      <div style={S.body}>
+      <div style={{ ...S.body, flexDirection: isMobile ? 'column' : 'row' }}>
+
+        {/* VIDEO CENTER — on mobile comes first */}
+        {isMobile && (
+          <div style={{ ...S.center, flex: 'none', height: '45vw', minHeight: 200, maxHeight: '50vh' }}>
+            <div style={S.videoWrap} data-video-wrap="1">
+              <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
+              {useJassub
+                ? <JassubPreview videoRef={videoRef} assContent={assContent} />
+                : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={currentSeg ? resolveStyle(currentSeg.id) : style} />}
+              <div
+                style={{ position: 'absolute', inset: 0, zIndex: 20, cursor: isDragging ? 'grabbing' : 'crosshair', opacity: 0, pointerEvents: isDragging ? 'auto' : 'none' }}
+                onMouseDown={e => {
+                  const wrap = e.currentTarget.parentElement; if (!wrap) return
+                  const rect = wrap.getBoundingClientRect()
+                  const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100))
+                  const y = Math.max(3, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100))
+                  if (dragTargetLayerId !== null) setTextLayers(l => l.map(t => t.id === dragTargetLayerId ? { ...t, x, y } : t))
+                  else if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
+                  else setStyle(s => ({ ...s, posX: x, posY: y }))
+                  setIsDragging(true)
+                }}
+                onMouseMove={e => {
+                  if (!isDragging) return
+                  const wrap = e.currentTarget.parentElement; if (!wrap) return
+                  const rect = wrap.getBoundingClientRect()
+                  const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100))
+                  const y = Math.max(3, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100))
+                  if (dragTargetLayerId !== null) setTextLayers(l => l.map(t => t.id === dragTargetLayerId ? { ...t, x, y } : t))
+                  else if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
+                  else setStyle(s => ({ ...s, posX: x, posY: y }))
+                }}
+                onMouseUp={() => { setIsDragging(false); setDragTargetSegId(null); setDragTargetLayerId(null) }}
+                onMouseLeave={() => { setIsDragging(false); setDragTargetSegId(null); setDragTargetLayerId(null) }}
+              />
+              <TextLayerRenderer layers={textLayers} currentTime={currentTime} />
+              {!videoUrl && <div style={S.noVid}><div style={{ fontSize: 48, opacity: 0.1 }}>🎬</div><div style={{ color: '#374151', marginTop: 10, fontSize: 13 }}>Preview unavailable</div></div>}
+            </div>
+            <div style={S.controls}>
+              <button style={S.playBtn} onClick={togglePlay}>{playing ? '⏸' : '▶'}</button>
+              <span style={{ color: '#64748B', fontSize: 11, minWidth: 70 }}>{fmtTime(currentTime)} / {fmtTime(duration)}</span>
+              <div style={S.seekBar} onClick={e => {
+                if (!duration) return
+                const r = e.currentTarget.getBoundingClientRect()
+                seek(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * duration)
+              }}>
+                <div style={{ position: 'absolute', left: 0, width: `${(currentTime/duration)*100}%`, height: '100%', background: 'linear-gradient(90deg,#7C3AED,#A78BFA)', borderRadius: 3, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', left: `${(currentTime/duration)*100}%`, top: '50%', transform: 'translate(-50%,-50%)', width: 12, height: 12, borderRadius: '50%', background: '#A78BFA', pointerEvents: 'none' }} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* LEFT PANEL */}
-        <div style={S.left}>
+        <div style={{ ...S.left, width: isMobile ? '100%' : 260, minWidth: isMobile ? 'unset' : 260, flex: isMobile ? '1' : 'none', height: isMobile ? undefined : '100%' }}>
           <div style={S.tabs}>
             {[
               { id: 'subs', icon: '⌨', label: 'Subs' },
@@ -1601,7 +1671,7 @@ export default function VideoEditor() {
         </div>
 
         {/* CENTER */}
-        <div style={S.center}>
+        {!isMobile && <div style={S.center}>
           <div style={S.videoWrap} data-video-wrap="1">
 <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
             {useJassub
@@ -1696,7 +1766,7 @@ export default function VideoEditor() {
               <div style={{ position: 'absolute', left: `${(currentTime/duration)*100}%`, top: 0, bottom: 0, width: 2, background: '#A78BFA', pointerEvents: 'none', boxShadow: '0 0 4px rgba(167,139,250,0.6)' }} />
             )}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   )
