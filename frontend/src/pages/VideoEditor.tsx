@@ -269,19 +269,27 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
 
   // WORD_POP — TikTok style scale up
   if (style.displayMode === 'word_pop') {
+    const hasBg = style.boxStyle !== 'none'
+    const activeRadius = style.boxStyle === 'pill' ? 999 : style.boxStyle === 'rounded_solid' ? 8 : 3
     return (
-      <div style={baseWrap}>
+      <div style={{ ...baseWrap, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
         {segWords.map((w, i) => {
           const isActive = currentTime >= w.start && currentTime <= w.end
           const isDone = currentTime > w.end
           const wd = style.allCaps ? w.word.toUpperCase() : w.word
-          const scale = isActive ? 1.25 : 1
           return (
             <span key={i} style={{
-              ...wordStyle(isActive, isDone),
-              transform: `scale(${scale})`,
               display: 'inline-block',
-              transition: 'transform 0.08s cubic-bezier(0.34,1.56,0.64,1), color 0.08s',
+              fontSize: isActive ? style.fontSize * 1.45 : style.fontSize * 0.9,
+              fontWeight: isActive ? 'bold' : style.bold ? 'bold' : 'normal',
+              color: isActive
+                ? (hasBg ? '#fff' : style.highlightColor)
+                : isDone ? `${style.color}60` : `${style.color}90`,
+              background: isActive && hasBg ? style.highlightColor : 'transparent',
+              padding: isActive && hasBg ? (style.boxStyle === 'pill' ? '2px 12px' : '2px 8px') : '0 2px',
+              borderRadius: isActive && hasBg ? activeRadius : 0,
+              lineHeight: 1.3,
+              transition: 'font-size 0.12s cubic-bezier(0.34,1.56,0.64,1), color 0.1s, background 0.1s',
             }}>{wd}</span>
           )
         })}
