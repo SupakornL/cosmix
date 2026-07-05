@@ -1024,14 +1024,28 @@ export default function VideoEditor() {
                           </button>
                         ))}
                       </div>
-                      {/* Box style */}
+                      {/* Box style + color */}
                       <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Box Style</div>
-                      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: style.boxStyle !== 'none' ? 6 : 8 }}>
                         {[{id:'none',l:'ไม่มี'},{id:'solid',l:'Box'},{id:'rounded_solid',l:'Rounded'},{id:'pill',l:'Pill'}].map(b => (
                           <button key={b.id} style={{ ...S.chip, ...(style.boxStyle === b.id ? S.chipActive : {}), fontSize: 10, padding: '2px 6px' }}
                             onClick={() => setStyle(s => ({ ...s, boxStyle: b.id as any }))}>{b.l}</button>
                         ))}
                       </div>
+                      {style.boxStyle !== 'none' && (
+                        <>
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Box Color <span style={{ color: '#374151' }}>(normal/segment mode)</span></div>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                            {BOX_COLORS.map(c => <div key={c} onClick={() => setStyle(s => ({ ...s, boxColor: c }))} style={{ width: 18, height: 18, borderRadius: 4, background: c, cursor: 'pointer', border: style.boxColor === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />)}
+                            <input type="color" value={style.boxColor} onChange={e => setStyle(s => ({ ...s, boxColor: e.target.value }))} style={{ width: 18, height: 18, borderRadius: 4, border: 'none', cursor: 'pointer', padding: 0 }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Active Word Color <span style={{ color: '#374151' }}>(word modes)</span></div>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                            {COLORS.map(c => <div key={c} onClick={() => setStyle(s => ({ ...s, highlightColor: c }))} style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: style.highlightColor === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />)}
+                            <input type="color" value={style.highlightColor} onChange={e => setStyle(s => ({ ...s, highlightColor: e.target.value }))} style={{ width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
+                          </div>
+                        </>
+                      )}
                       {/* Colors */}
                       <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Text Color</div>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
