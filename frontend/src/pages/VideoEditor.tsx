@@ -145,8 +145,8 @@ function splitLongText(text: string, maxChars: number): string {
   return text.slice(0, splitAt) + '\n' + text.slice(splitAt + 1)
 }
 
-function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, onDragStart, onDragEnd }: {
-  seg: Segment | null; words: WordStamp[]; currentTime: number; style: SubStyle
+function SubtitleRenderer({ seg, words, currentTime, style, tick, onPositionChange, onDragStart, onDragEnd }: {
+  seg: Segment | null; words: WordStamp[]; currentTime: number; style: SubStyle; tick?: number
   onPositionChange?: (x: number, y: number) => void
   onDragStart?: () => void
   onDragEnd?: () => void
@@ -342,13 +342,19 @@ function SubtitleRenderer({ seg, words, currentTime, style, onPositionChange, on
 
   // TYPEWRITER
   if (style.displayMode === 'typewriter') {
-    const chars = Math.floor(progress * text.length)
+    // Type at 12 chars/sec based on elapsed time — more natural than progress-based
+    const elapsed = currentTime - seg.start
+    const chars = Math.min(text.length, Math.max(0, Math.floor(elapsed * 12)))
+    const done = chars >= text.length
+    const bgAlpha = Math.round(style.bgOpacity * 255).toString(16).padStart(2, '0')
+    const bgStyle = style.boxStyle !== 'none'
+      ? { background: `${style.boxColor}DD`, padding: '4px 16px', borderRadius: style.boxStyle === 'pill' ? 30 : 8 }
+      : style.bgOpacity > 0 ? { background: `${style.bgColor}${bgAlpha}`, padding: '4px 12px', borderRadius: 4 } : {}
     return (
       <div style={baseWrap}>
-        <span style={{ fontSize: style.fontSize, color: style.color,
-          background: style.bgOpacity > 0 ? `${style.bgColor}${Math.round(style.bgOpacity*255).toString(16).padStart(2,'0')}` : 'transparent',
-          padding: '4px 12px', borderRadius: 4 }}>
-          {text.slice(0, chars)}<span style={{ opacity: Math.floor(Date.now()/400) % 2 === 0 ? 1 : 0 }}>|</span>
+        <span style={{ fontSize: style.fontSize, color: style.color, ...bgStyle }}>
+          {text.slice(0, chars)}
+          {!done && <span style={{ opacity: (tick ?? 0) % 2 === 0 ? 1 : 0, fontWeight: 300 }}>|</span>}
         </span>
       </div>
     )
@@ -560,7 +566,7 @@ export default function VideoEditor() {
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [, tick] = useState(0)
+  const [tickCount, tick] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragTargetSegId, setDragTargetSegId] = useState<number | null>(null)
   const [dragTargetLayerId, setDragTargetLayerId] = useState<number | null>(null)
@@ -901,7 +907,7 @@ export default function VideoEditor() {
               <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
               {useJassub
                 ? <JassubPreview videoRef={videoRef} assContent={assContent} />
-                : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={currentSeg ? resolveStyle(currentSeg.id) : style} />}
+                : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={currentSeg ? resolveStyle(currentSeg.id) : style} tick={tickCount} />}
               <div
                 style={{ position: 'absolute', inset: 0, zIndex: 20, cursor: isDragging ? 'grabbing' : 'crosshair', opacity: 0, pointerEvents: isDragging ? 'auto' : 'none' }}
                 onMouseDown={e => {
@@ -1676,7 +1682,7 @@ export default function VideoEditor() {
 <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
             {useJassub
               ? <JassubPreview videoRef={videoRef} assContent={assContent} />
-              : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={currentSeg ? resolveStyle(currentSeg.id) : style} />}
+              : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={currentSeg ? resolveStyle(currentSeg.id) : style} tick={tickCount} />}
             <button
               style={{ position: 'absolute', top: 8, right: 8, zIndex: 25, fontSize: 10, padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(167,139,250,0.4)', background: useJassub ? 'rgba(124,58,237,0.6)' : 'rgba(0,0,0,0.4)', color: '#E9D5FF', cursor: 'pointer' }}
               onClick={() => setUseJassub(v => !v)}
