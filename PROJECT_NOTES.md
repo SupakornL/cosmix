@@ -281,6 +281,15 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ## 8. Session Log
 
+### 2026-07-05
+- **Per-segment subtitle style overrides**: แต่ละ segment มี color/bold/italic/shadow/outline/fontSize/position override แยกกัน + ซ่อน segment ได้ (`hiddenSegs`)
+- **Drag-to-position per segment**: เพิ่ม `dragTargetSegId` — กด Drag ใน mini panel ของ segment แล้วลากบน preview ปรับ posX/posY เฉพาะ segment นั้น
+- **Global Style collapsible**: ย้าย Mode+Style tab content มาเป็น collapsible section ที่ด้านบนของ Subs tab — ลด tab bar เหลือ 5 tabs
+- **Text layers compact cards**: เปลี่ยน always-expanded เป็น compact header (color dot + inline text edit + timing badge) + expandable mini panel สำหรับ position/size/color/bold/timing
+- **Backend per-seg override export**: `build_ass_content` รับ `seg_overrides` dict → inline ASS tags per dialogue (`\1c`, `\b`, `\i`, `\shad`, `\bord`) + per-seg `\pos`
+- **Logo nav fix**: logo button ใน EditorPage.tsx + VideoEditor.tsx กด → landing page `/` (ไม่ logout)
+- **Promotional videos**: สร้าง before/after comparison + demo clip จาก GoPro footage
+
 ### 2026-06-30
 - **Pill box char_w fix (Fixed)**: `char_w = measured_char_width_px * css_scale` ขาด 2.0x multiplier → ข้อความหลุดกล่อง — แก้เป็น `char_w = size * 0.62` (size รวม 2.0x แล้ว)
 - **4K export fail (Fixed)**: Railway encode 3840×2160 ช้าเกินจน timeout → auto-downscale เป็น 1080p (`scale=1920:-2` / `scale=-2:1920`)
