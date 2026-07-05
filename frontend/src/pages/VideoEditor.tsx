@@ -538,6 +538,9 @@ export default function VideoEditor() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [, tick] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [dragTargetSegId, setDragTargetSegId] = useState<number | null>(null)
+  const [globalStyleOpen, setGlobalStyleOpen] = useState(false)
+  const [openTextPanel, setOpenTextPanel] = useState<number | null>(null)
   const [suggestions, setSuggestions] = useState<any>(null)
 
   // JASSUB canvas preview (A/B against the DOM/CSS overlay) — renders subtitles
@@ -857,11 +860,9 @@ export default function VideoEditor() {
         <div style={S.left}>
           <div style={S.tabs}>
             {[
-              { id: 'mode', icon: '✦', label: 'Mode' },
-              { id: 'style', icon: '🎨', label: 'Style' },
               { id: 'subs', icon: '⌨', label: 'Subs' },
               { id: 'text', icon: 'T', label: 'Text' },
-              { id: 'filter', icon: '🎨', label: 'Filter' },
+              { id: 'filter', icon: '⬡', label: 'Filter' },
               { id: 'suggest', icon: '✦', label: 'AI' },
               { id: 'export', icon: '⚙', label: 'More' },
             ].map(t => (
@@ -993,8 +994,78 @@ export default function VideoEditor() {
             {/* SUBS TAB */}
             {activeTab === 'subs' && (
               <div style={S.panel}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={S.ptitle}>Subtitles ({segments.length})</div>
+                {/* Global Style defaults (collapsed by default) */}
+                <div style={{ marginBottom: 12, borderRadius: 10, border: '0.5px solid rgba(139,92,246,0.2)', overflow: 'hidden' }}>
+                  <button onClick={() => setGlobalStyleOpen(o => !o)}
+                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(139,92,246,0.07)', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 12 }}>
+                    <span>⚙ Global Style (default สำหรับทุก subtitle)</span>
+                    <span>{globalStyleOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {globalStyleOpen && (
+                    <div style={{ padding: '10px 12px', background: 'rgba(13,19,34,0.6)' }}>
+                      {/* Display mode */}
+                      <div style={{ fontSize: 10, color: '#475569', marginBottom: 6 }}>Display Mode</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 10 }}>
+                        {DISPLAY_MODES.map(m => (
+                          <button key={m.id} style={{ ...S.chip, ...(style.displayMode === m.id ? S.chipActive : {}), fontSize: 10, padding: '3px 6px', textAlign: 'left' as const, display: 'flex', gap: 4, alignItems: 'center' }}
+                            onClick={() => setStyle(s => ({ ...s, displayMode: m.id }))}>
+                            <span>{m.icon}</span><span>{m.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {/* Box style */}
+                      <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Box Style</div>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                        {[{id:'none',l:'ไม่มี'},{id:'solid',l:'Box'},{id:'rounded_solid',l:'Rounded'},{id:'pill',l:'Pill'}].map(b => (
+                          <button key={b.id} style={{ ...S.chip, ...(style.boxStyle === b.id ? S.chipActive : {}), fontSize: 10, padding: '2px 6px' }}
+                            onClick={() => setStyle(s => ({ ...s, boxStyle: b.id as any }))}>{b.l}</button>
+                        ))}
+                      </div>
+                      {/* Colors */}
+                      <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Text Color</div>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                        {COLORS.map(c => <div key={c} onClick={() => setStyle(s => ({ ...s, color: c }))} style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: style.color === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />)}
+                        <input type="color" value={style.color} onChange={e => setStyle(s => ({ ...s, color: e.target.value }))} style={{ width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
+                      </div>
+                      {/* Font + Size */}
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                        <div style={{ flex: 2 }}>
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Font</div>
+                          <select style={{ ...S.select, fontSize: 11, padding: '3px 6px' }} value={style.fontFamily} onChange={e => setStyle(s => ({ ...s, fontFamily: e.target.value }))}>
+                            {FONTS.map(f => <option key={f}>{f}</option>)}
+                          </select>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Size — {style.fontSize}px</div>
+                          <input type="range" min={14} max={60} value={style.fontSize} style={{ ...S.range }} onChange={e => setStyle(s => ({ ...s, fontSize: +e.target.value }))} />
+                        </div>
+                      </div>
+                      {/* Options */}
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                        {([['bold','Bold'],['italic','Italic'],['outline','Outline'],['shadow','Shadow']] as const).map(([k,l]) => (
+                          <button key={k} style={{ ...S.chip, ...((style as any)[k] ? S.chipActive : {}), fontSize: 10, padding: '2px 6px' }}
+                            onClick={() => setStyle(s => ({ ...s, [k]: !(s as any)[k] }))}>{l}</button>
+                        ))}
+                      </div>
+                      {/* Position */}
+                      <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Position</div>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
+                        {(['top','middle','bottom'] as const).map(p => (
+                          <button key={p} style={{ ...S.chip, ...(style.position === p && style.posY === -1 ? S.chipActive : {}), fontSize: 10, padding: '2px 6px' }}
+                            onClick={() => setStyle(s => ({ ...s, position: p, posY: -1 }))}>{p}</button>
+                        ))}
+                        <button style={{ ...S.chip, ...(isDragging && dragTargetSegId === null ? S.chipActive : {}), fontSize: 10, padding: '2px 6px' }}
+                          onClick={() => { setDragTargetSegId(null); setIsDragging(v => !v) }}>
+                          {isDragging && dragTargetSegId === null ? '🎯 Drag...' : '✥ Drag'}
+                        </button>
+                        {style.posY !== -1 && <button style={{ ...S.chip, fontSize: 10, padding: '2px 6px' }} onClick={() => setStyle(s => ({ ...s, posY: -1, posX: 50 }))}>↩ Reset</button>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: '#475569' }}>Subtitles ({segments.length})</div>
                   <button style={S.chip} onClick={() => setSegments(s => [...s, { id: Date.now(), start: currentTime, end: currentTime+2, text: 'ใหม่' }].sort((a,b)=>a.start-b.start))}>+ เพิ่ม</button>
                 </div>
                 {segments.map(seg => {
@@ -1182,13 +1253,36 @@ export default function VideoEditor() {
                               ))}
                             </div>
 
+                            {/* Display Mode */}
+                            <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Display Mode</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, marginBottom: 8 }}>
+                              {DISPLAY_MODES.map(m => (
+                                <button key={m.id} style={{ ...S.chip, ...((rs.displayMode === m.id) ? S.chipActive : {}), fontSize: 9, padding: '2px 5px', textAlign: 'left' as const, display: 'flex', gap: 3 }}
+                                  onClick={() => updateSegOverride(seg.id, { displayMode: m.id })}>
+                                  <span>{m.icon}</span><span>{m.label}</span>
+                                </button>
+                              ))}
+                            </div>
+
                             {/* Position */}
                             <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Position</div>
-                            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
                               {(['top','middle','bottom'] as const).map(p => (
                                 <button key={p} style={{ ...S.chip, ...(rs.position === p && rs.posY === -1 ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
                                   onClick={() => updateSegOverride(seg.id, { position: p, posY: -1 })}>{p}</button>
                               ))}
+                              <button style={{ ...S.chip, ...(isDragging && dragTargetSegId === seg.id ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
+                                onClick={() => {
+                                  seek(seg.start)
+                                  setDragTargetSegId(seg.id)
+                                  setIsDragging(true)
+                                }}>
+                                {isDragging && dragTargetSegId === seg.id ? '🎯 Drag...' : '✥ Drag'}
+                              </button>
+                              {(segOverrides[seg.id]?.posY ?? -1) !== -1 && (
+                                <button style={{ ...S.chip, fontSize: 10, padding: '2px 7px' }}
+                                  onClick={() => updateSegOverride(seg.id, { posY: -1, posX: 50 })}>↩ Reset pos</button>
+                              )}
                             </div>
 
                             {/* Reset */}
@@ -1208,8 +1302,8 @@ export default function VideoEditor() {
             {/* TEXT LAYERS TAB */}
             {activeTab === 'text' && (
               <div style={S.panel}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div style={S.ptitle}>Text Layers</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: '#475569' }}>Text Layers ({textLayers.length})</div>
                   <button style={S.chip} onClick={addTextLayer}>+ Add Text</button>
                 </div>
                 {textLayers.length === 0 && (
@@ -1217,57 +1311,77 @@ export default function VideoEditor() {
                     เพิ่ม text layer เช่น title, watermark, CTA
                   </div>
                 )}
-                {textLayers.map(layer => (
-                  <div key={layer.id} style={S.subCard}>
-                    <input style={{ ...S.tInput, width: '100%', marginBottom: 8, fontSize: 13 }}
-                      value={layer.text} onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, text: e.target.value } : x))} />
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: '#374151', fontSize: 9 }}>X%</div>
-                        <input type="number" min={0} max={100} style={S.tInput} value={layer.x}
-                          onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, x: +e.target.value } : x))} />
+                {textLayers.map(layer => {
+                  const isOpen = openTextPanel === layer.id
+                  return (
+                    <div key={layer.id} style={{ background: 'rgba(13,19,34,0.8)', border: '0.5px solid rgba(139,92,246,0.18)', borderRadius: 12, marginBottom: 8, overflow: 'hidden' }}>
+                      {/* Compact header */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer' }}
+                        onClick={() => setOpenTextPanel(isOpen ? null : layer.id)}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: layer.color, flexShrink: 0, border: '1px solid rgba(255,255,255,0.2)' }} />
+                        <input style={{ flex: 1, fontSize: 13, background: 'transparent', border: 'none', color: '#E2E8F0', outline: 'none', cursor: 'text' }}
+                          value={layer.text}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, text: e.target.value } : x))} />
+                        <span style={{ fontSize: 10, color: '#475569', flexShrink: 0 }}>{layer.always ? 'always' : `${layer.start.toFixed(1)}–${layer.end.toFixed(1)}s`}</span>
+                        <button style={{ ...S.iconBtn, color: '#EF4444', flexShrink: 0 }}
+                          onClick={e => { e.stopPropagation(); setTextLayers(l => l.filter(x => x.id !== layer.id)) }}>✕</button>
+                        <span style={{ fontSize: 10, color: '#475569' }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: '#374151', fontSize: 9 }}>Y%</div>
-                        <input type="number" min={0} max={100} style={S.tInput} value={layer.y}
-                          onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, y: +e.target.value } : x))} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: '#374151', fontSize: 9 }}>Size</div>
-                        <input type="number" min={10} max={80} style={S.tInput} value={layer.fontSize}
-                          onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, fontSize: +e.target.value } : x))} />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
-                      {COLORS.slice(0,6).map(c => (
-                        <div key={c} onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, color: c } : x))}
-                          style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: layer.color === c ? '2px solid #A78BFA' : '2px solid transparent' }} />
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                      <button style={{ ...S.chip, ...(layer.always ? S.chipActive : {}) }}
-                        onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, always: !x.always } : x))}>
-                        Always show
-                      </button>
-                      <button style={{ ...S.iconBtn, color: '#EF4444' }}
-                        onClick={() => setTextLayers(l => l.filter(x => x.id !== layer.id))}>✕</button>
-                    </div>
-                    {!layer.always && (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ color: '#374151', fontSize: 9 }}>Show from (s)</div>
-                          <input type="number" step="0.1" style={S.tInput} value={layer.start.toFixed(1)}
-                            onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, start: +e.target.value } : x))} />
+                      {/* Expandable panel */}
+                      {isOpen && (
+                        <div style={{ padding: '0 12px 12px', borderTop: '0.5px solid rgba(139,92,246,0.15)' }}>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 10, marginBottom: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ color: '#475569', fontSize: 9, marginBottom: 3 }}>X%</div>
+                              <input type="number" min={0} max={100} style={S.tInput} value={layer.x}
+                                onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, x: +e.target.value } : x))} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ color: '#475569', fontSize: 9, marginBottom: 3 }}>Y%</div>
+                              <input type="number" min={0} max={100} style={S.tInput} value={layer.y}
+                                onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, y: +e.target.value } : x))} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ color: '#475569', fontSize: 9, marginBottom: 3 }}>Size</div>
+                              <input type="number" min={10} max={80} style={S.tInput} value={layer.fontSize}
+                                onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, fontSize: +e.target.value } : x))} />
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Color</div>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                            {COLORS.slice(0,8).map(c => (
+                              <div key={c} onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, color: c } : x))}
+                                style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: layer.color === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />
+                            ))}
+                            <input type="color" value={layer.color} onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, color: e.target.value } : x))}
+                              style={{ width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+                            <button style={{ ...S.chip, ...(layer.bold ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
+                              onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, bold: !x.bold } : x))}>Bold</button>
+                            <button style={{ ...S.chip, ...(layer.always ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
+                              onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, always: !x.always } : x))}>Always show</button>
+                          </div>
+                          {!layer.always && (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ color: '#475569', fontSize: 9, marginBottom: 3 }}>Show from (s)</div>
+                                <input type="number" step="0.1" style={S.tInput} value={layer.start.toFixed(1)}
+                                  onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, start: +e.target.value } : x))} />
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ color: '#475569', fontSize: 9, marginBottom: 3 }}>Until (s)</div>
+                                <input type="number" step="0.1" style={S.tInput} value={layer.end.toFixed(1)}
+                                  onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, end: +e.target.value } : x))} />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ color: '#374151', fontSize: 9 }}>Until (s)</div>
-                          <input type="number" step="0.1" style={S.tInput} value={layer.end.toFixed(1)}
-                            onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, end: +e.target.value } : x))} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -1437,7 +1551,8 @@ export default function VideoEditor() {
                 const rect = wrap.getBoundingClientRect()
                 const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100))
                 const y = Math.max(3, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100))
-                setStyle(s => ({ ...s, posX: x, posY: y }))
+                if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
+                else setStyle(s => ({ ...s, posX: x, posY: y }))
                 setIsDragging(true)
               }}
               onMouseMove={e => {
@@ -1447,10 +1562,11 @@ export default function VideoEditor() {
                 const rect = wrap.getBoundingClientRect()
                 const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100))
                 const y = Math.max(3, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100))
-                setStyle(s => ({ ...s, posX: x, posY: y }))
+                if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
+                else setStyle(s => ({ ...s, posX: x, posY: y }))
               }}
-              onMouseUp={() => setIsDragging(false)}
-              onMouseLeave={() => setIsDragging(false)}
+              onMouseUp={() => { setIsDragging(false); setDragTargetSegId(null) }}
+              onMouseLeave={() => { setIsDragging(false); setDragTargetSegId(null) }}
             />
             {filter.vignette > 0 && (
               <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 4,
