@@ -804,7 +804,7 @@ export default function VideoEditor() {
       <style>{CSS}</style>
 
       <nav style={S.nav}>
-        <div style={S.logo} onClick={() => navigate('/editor')}>⬡ COSMIX</div>
+        <div style={S.logo} onClick={() => navigate('/')}>⬡ COSMIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ color: '#475569', fontSize: 13 }}>Video Editor</div>
           {user?.role === 'admin' && (
