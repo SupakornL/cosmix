@@ -164,6 +164,28 @@ export default function LandingPage() {
           transition: color 0.2s; cursor: pointer;
         }
         .nav-link:hover { color: #E2E8F0; }
+
+        @media (max-width: 768px) {
+          .nav-links { display: none !important; }
+          .nav-btn-secondary { display: none !important; }
+          .nav-inner { padding: 14px 20px !important; }
+          .hero-section { padding: 100px 20px 60px !important; }
+          .section-pad { padding-left: 20px !important; padding-right: 20px !important; }
+          .features-grid { grid-template-columns: 1fr !important; }
+          .how-steps { flex-direction: column !important; align-items: center !important; }
+          .how-arrow { display: none !important; }
+          .how-step { padding: 0 16px !important; max-width: 100% !important; width: 100% !important; }
+          .upload-section { padding-left: 20px !important; padding-right: 20px !important; }
+          .upload-box { padding: 36px 20px !important; }
+          .footer-inner { padding: 28px 20px !important; }
+          .feature-card { padding: 20px !important; }
+          .plan-card { padding: 24px 20px !important; }
+          h1 { font-size: clamp(32px, 9vw, 52px) !important; letter-spacing: -0.5px !important; }
+          h2 { font-size: clamp(22px, 6vw, 32px) !important; }
+          .hero-section p { font-size: 15px !important; }
+          .hero-section .btn-primary,
+          .hero-section .btn-outline { width: 100% !important; font-size: 15px !important; padding: 13px 20px !important; }
+        }
       `}</style>
 
       {/* === NEBULA PARALLAX BG === */}
@@ -205,23 +227,23 @@ export default function LandingPage() {
       </div>
 
       {/* === NAV === */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 48px', background: scrollY > 40 ? 'rgba(6,10,18,0.9)' : 'transparent', backdropFilter: scrollY > 40 ? 'blur(20px)' : 'none', borderBottom: scrollY > 40 ? '1px solid rgba(139,92,246,0.12)' : 'none', transition: 'all 0.3s' }}>
+      <nav className="nav-inner" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 48px', background: scrollY > 40 ? 'rgba(6,10,18,0.9)' : 'transparent', backdropFilter: scrollY > 40 ? 'blur(20px)' : 'none', borderBottom: scrollY > 40 ? '1px solid rgba(139,92,246,0.12)' : 'none', transition: 'all 0.3s' }}>
         <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, background: 'linear-gradient(135deg, #A78BFA, #60A5FA, #34D399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           ⬡ COSMIX
         </div>
-        <div style={{ display: 'flex', gap: 36 }}>
+        <div className="nav-links" style={{ display: 'flex', gap: 36 }}>
           <span className="nav-link" onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Features</span>
           <span className="nav-link" onClick={() => navigate('/pricing')} style={{cursor:'pointer'}}>Pricing</span>
           <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn-outline" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/login')}>Log in</button>
+          <button className="btn-outline nav-btn-secondary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/login')}>Log in</button>
           <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/register')}>ทดลองฟรี 7 วัน</button>
         </div>
       </nav>
 
       {/* === HERO === */}
-      <section ref={heroRef} style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '180px 32px 100px', transform: `translateY(${scrollY * 0.15}px)` }}>
+      <section ref={heroRef} className="hero-section" style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '180px 32px 100px', transform: `translateY(${scrollY * 0.15}px)` }}>
 
         <div className="fade-up fade-up-1" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', color: '#A78BFA', fontSize: 12, padding: '6px 16px', borderRadius: 20, marginBottom: 28, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           ✦ AI-Powered Video Editor — Built for Creators
@@ -258,8 +280,8 @@ export default function LandingPage() {
       </section>
 
       {/* === UPLOAD ZONE DEMO === */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '0 48px 80px', maxWidth: 800, margin: '0 auto' }}>
-        <div style={{ border: '2px dashed rgba(139,92,246,0.3)', borderRadius: 20, padding: '52px 32px', textAlign: 'center', background: 'rgba(139,92,246,0.03)', cursor: 'pointer', transition: 'all 0.3s' }}
+      <section className="upload-section section-pad" style={{ position: 'relative', zIndex: 1, padding: '0 48px 80px', maxWidth: 800, margin: '0 auto' }}>
+        <div className="upload-box" style={{ border: '2px dashed rgba(139,92,246,0.3)', borderRadius: 20, padding: '52px 32px', textAlign: 'center', background: 'rgba(139,92,246,0.03)', cursor: 'pointer', transition: 'all 0.3s' }}
           onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(139,92,246,0.6)'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(139,92,246,0.06)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(139,92,246,0.3)'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(139,92,246,0.03)' }}
           onClick={() => navigate('/register')}
@@ -276,14 +298,14 @@ export default function LandingPage() {
       </section>
 
       {/* === FEATURES === */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1100, margin: '0 auto' }}>
+      <section className="section-pad" id="features" style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{ color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 16 }}>What Cosmix can do</div>
           <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 700, margin: 0, background: 'linear-gradient(180deg, #F8FAFC 40%, #64748B 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Four ways AI edits your video
           </h2>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
+        <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
           {FEATURES.map(f => (
             <div key={f.title} className="feature-card">
               <div style={{ width: 48, height: 48, borderRadius: 12, background: `${f.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}>{f.icon}</div>
@@ -296,19 +318,19 @@ export default function LandingPage() {
 
 
       {/* === HOW IT WORKS === */}
-      <section id="docs" style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1100, margin: '0 auto' }}>
+      <section id="docs" className="section-pad" style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 60 }}>
           <div style={{ color: '#7C3AED', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '2px', marginBottom: 12 }}>How it works</div>
           <h2 style={{ fontSize: 36, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: '#E2E8F0', margin: 0 }}>ใช้งานง่าย 3 ขั้นตอน</h2>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, justifyContent: 'center', flexWrap: 'wrap' as const }}>
+        <div className="how-steps" style={{ display: 'flex', alignItems: 'flex-start', gap: 0, justifyContent: 'center', flexWrap: 'wrap' as const }}>
           {[
             { step: '01', icon: '📤', title: 'Upload วีดีโอ', desc: 'อัพโหลดวีดีโอของคุณ รองรับ MP4, MOV, AVI ขนาดสูงสุด 5GB', color: '#7C3AED' },
             { step: '02', icon: '🤖', title: 'AI ประมวลผล', desc: 'AI สร้าง subtitle อัตโนมัติ ภาษาไทย+อังกฤษ พร้อม word-by-word timing', color: '#A78BFA' },
             { step: '03', icon: '✨', title: 'Export & Share', desc: 'แก้ subtitle, เลือก style สวยๆ แล้ว export วีดีโอได้เลย', color: '#60A5FA' },
           ].map((item, idx) => (
             <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
-              <div style={{ textAlign: 'center', padding: '0 32px', maxWidth: 280 }}>
+              <div className="how-step" style={{ textAlign: 'center', padding: '0 32px', maxWidth: 280 }}>
                 <div style={{ width: 80, height: 80, borderRadius: '50%', background: `${item.color}18`, borderTop: `2px solid ${item.color}40`, borderLeft: `2px solid ${item.color}40`, borderRight: `2px solid ${item.color}40`, borderBottom: `2px solid ${item.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>
                   {item.icon}
                 </div>
@@ -317,14 +339,14 @@ export default function LandingPage() {
                 <div style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6 }}>{item.desc}</div>
               </div>
               {idx < 2 && (
-                <div style={{ color: '#374151', fontSize: 24, paddingTop: 28, flexShrink: 0 }}>→</div>
+                <div className="how-arrow" style={{ color: '#374151', fontSize: 24, paddingTop: 28, flexShrink: 0 }}>→</div>
               )}
             </div>
           ))}
         </div>
       </section>
       {/* === PRICING === */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1000, margin: '0 auto' }}>
+      <section className="section-pad" style={{ position: 'relative', zIndex: 1, padding: '40px 48px 100px', maxWidth: 1000, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{ color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 16 }}>Pricing</div>
           <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 700, margin: 0, background: 'linear-gradient(180deg, #F8FAFC 40%, #64748B 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -364,7 +386,7 @@ export default function LandingPage() {
       </section>
 
       {/* === FOOTER === */}
-      <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(139,92,246,0.1)', padding: '40px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+      <footer className="footer-inner" style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(139,92,246,0.1)', padding: '40px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, background: 'linear-gradient(135deg, #A78BFA, #60A5FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>⬡ COSMIX</div>
         <div style={{ color: '#374151', fontSize: 13 }}>© 2026 Cosmix. Built with Claude + Groq Whisper.</div>
       </footer>
