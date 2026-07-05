@@ -545,11 +545,33 @@ export default function VideoEditor() {
   const [useJassub, setUseJassub] = useState(false)
   const [assContent, setAssContent] = useState('')
 
+  // Per-segment style overrides & visibility
+  const [segOverrides, setSegOverrides] = useState<Record<number, Partial<SubStyle>>>({})
+  const [hiddenSegs, setHiddenSegs] = useState<Set<number>>(new Set())
+  const [openSegPanel, setOpenSegPanel] = useState<number | null>(null)
+
+  const resolveStyle = useCallback((segId: number): SubStyle => {
+    const ov = segOverrides[segId]
+    return ov ? { ...style, ...ov } : style
+  }, [style, segOverrides])
+
+  const updateSegOverride = useCallback((segId: number, patch: Partial<SubStyle>) => {
+    setSegOverrides(prev => ({ ...prev, [segId]: { ...(prev[segId] || {}), ...patch } }))
+  }, [])
+
+  const clearSegOverride = useCallback((segId: number) => {
+    setSegOverrides(prev => { const n = { ...prev }; delete n[segId]; return n })
+  }, [])
+
+  const toggleHidden = useCallback((segId: number) => {
+    setHiddenSegs(prev => { const n = new Set(prev); n.has(segId) ? n.delete(segId) : n.add(segId); return n })
+  }, [])
+
   const currentSeg = useMemo(() => {
     if (segments.length === 0) return null
-    // Exact match only — no lingering during silent gaps
-    return segments.find(s => currentTime >= s.start && currentTime <= s.end) ?? null
-  }, [segments, currentTime])
+    // Exact match only — no lingering during silent gaps; skip hidden segments
+    return segments.find(s => currentTime >= s.start && currentTime <= s.end && !hiddenSegs.has(s.id)) ?? null
+  }, [segments, currentTime, hiddenSegs])
 
   // Debug: detect re-render loop
   const renderCount = useRef(0)
@@ -750,21 +772,23 @@ export default function VideoEditor() {
     const scaleModes = ['scale_pop', 'scale_pop_bold']
     const wordModes = ['word_single', 'word_trail', 'word_pop']
 
-    // Scale Pop: one word at a time (active word, at 1.6x — handled in backend)
-    if (scaleModes.includes(style.displayMode) && words.length > 0) {
-      return words.map((w, i) => ({ id: i + 1, start: w.start, end: w.end, text: w.word }))
-    }
+    const findParentSegId = (w: WordStamp): number | undefined =>
+      segments.find(s => w.start >= s.start && w.start < s.end)?.id
 
-    if (wordModes.includes(style.displayMode) && words.length > 0) {
-      return words.map((w, i) => ({ id: i + 1, start: w.start, end: w.end, text: w.word }))
+    if (scaleModes.includes(style.displayMode) && words.length > 0) {
+      return words.map((w, i) => ({ id: i + 1, start: w.start, end: w.end, text: w.word, segId: findParentSegId(w) }))
     }
-    return segments
+    if (wordModes.includes(style.displayMode) && words.length > 0) {
+      return words.map((w, i) => ({ id: i + 1, start: w.start, end: w.end, text: w.word, segId: findParentSegId(w) }))
+    }
+    return segments.map(s => ({ ...s, segId: s.id }))
   }
 
   async function handleExport() {
     setExporting(true)
     try {
-      const exportSubtitles = buildExportSubtitles()
+      const allExportSubs = buildExportSubtitles()
+      const exportSubtitles = allExportSubs.filter(s => !hiddenSegs.has((s as any).segId ?? s.id))
 
       const previewWidth = getVideoContentWidth()
 
@@ -786,7 +810,7 @@ export default function VideoEditor() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/jobs/${jobId}/export`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtitle_style: style, trim, volume, speed, subtitles: exportSubtitles, previewWidth, measuredCharWidthPx }),
+        body: JSON.stringify({ subtitle_style: style, seg_overrides: segOverrides, trim, volume, speed, subtitles: exportSubtitles, previewWidth, measuredCharWidthPx }),
       })
       if (res.ok) {
         const blob = await res.blob()
@@ -978,7 +1002,7 @@ export default function VideoEditor() {
                   const isActive = currentSeg?.id === seg.id
                   return (
                     <div key={seg.id} onClick={() => seek(seg.start)}
-                      style={{ background: 'var(--color-background-primary, rgba(13,19,34,0.8))', border: `0.5px solid ${isActive ? '#7F77DD' : 'rgba(139,92,246,0.12)'}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8, cursor: 'pointer' }}>
+                      style={{ background: hiddenSegs.has(seg.id) ? 'rgba(13,19,34,0.4)' : 'var(--color-background-primary, rgba(13,19,34,0.8))', border: `0.5px solid ${isActive ? '#7F77DD' : segOverrides[seg.id] ? 'rgba(167,139,250,0.4)' : 'rgba(139,92,246,0.12)'}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8, cursor: 'pointer', opacity: hiddenSegs.has(seg.id) ? 0.5 : 1, transition: 'opacity 0.2s' }}>
 
                       {/* Timestamp row */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1080,12 +1104,101 @@ export default function VideoEditor() {
                       )}
 
                       {/* Segment actions */}
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
-                        <button style={{ ...S.iconBtn, fontSize: 11 }} onClick={e => { e.stopPropagation(); shiftSeg(seg.id, -0.1) }} title="-0.1s">◀ 0.1s</button>
-                        <button style={{ ...S.iconBtn, fontSize: 11 }} onClick={e => { e.stopPropagation(); shiftSeg(seg.id, +0.1) }} title="+0.1s">0.1s ▶</button>
-                        <button style={{ ...S.iconBtn, color: '#60A5FA' }} onClick={e => { e.stopPropagation(); splitSegment(seg.id) }} title="Split">✂</button>
-                        <button style={{ ...S.iconBtn, color: '#EF4444' }} onClick={e => { e.stopPropagation(); setSegments(s => s.filter(x => x.id !== seg.id)) }} title="Delete">✕</button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {/* Hide toggle */}
+                          <button style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, border: '0.5px solid rgba(139,92,246,0.25)', background: hiddenSegs.has(seg.id) ? 'rgba(239,68,68,0.15)' : 'rgba(139,92,246,0.06)', color: hiddenSegs.has(seg.id) ? '#FCA5A5' : '#64748B', cursor: 'pointer' }}
+                            onClick={e => { e.stopPropagation(); toggleHidden(seg.id) }}>
+                            {hiddenSegs.has(seg.id) ? '🚫 ซ่อน' : '👁'}
+                          </button>
+                          {/* Customize toggle */}
+                          <button style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, border: `0.5px solid ${segOverrides[seg.id] ? 'rgba(167,139,250,0.5)' : 'rgba(139,92,246,0.2)'}`, background: segOverrides[seg.id] ? 'rgba(124,58,237,0.2)' : 'rgba(139,92,246,0.06)', color: segOverrides[seg.id] ? '#C4B5FD' : '#64748B', cursor: 'pointer' }}
+                            onClick={e => { e.stopPropagation(); setOpenSegPanel(openSegPanel === seg.id ? null : seg.id) }}>
+                            {segOverrides[seg.id] ? '✨ Custom' : '+ Style'}
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button style={{ ...S.iconBtn, fontSize: 11 }} onClick={e => { e.stopPropagation(); shiftSeg(seg.id, -0.1) }} title="-0.1s">◀ 0.1s</button>
+                          <button style={{ ...S.iconBtn, fontSize: 11 }} onClick={e => { e.stopPropagation(); shiftSeg(seg.id, +0.1) }} title="+0.1s">0.1s ▶</button>
+                          <button style={{ ...S.iconBtn, color: '#60A5FA' }} onClick={e => { e.stopPropagation(); splitSegment(seg.id) }} title="Split">✂</button>
+                          <button style={{ ...S.iconBtn, color: '#EF4444' }} onClick={e => { e.stopPropagation(); setSegments(s => s.filter(x => x.id !== seg.id)) }} title="Delete">✕</button>
+                        </div>
                       </div>
+
+                      {/* Per-segment style override panel */}
+                      {openSegPanel === seg.id && (() => {
+                        const rs = resolveStyle(seg.id)
+                        const hasOv = !!segOverrides[seg.id]
+                        return (
+                          <div onClick={e => e.stopPropagation()} style={{ borderTop: '0.5px solid rgba(139,92,246,0.2)', paddingTop: 10, marginTop: 8 }}>
+                            {/* Text color */}
+                            <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Text Color</div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                              {COLORS.map(c => (
+                                <div key={c} onClick={() => updateSegOverride(seg.id, { color: c })}
+                                  style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: rs.color === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />
+                              ))}
+                              <input type="color" value={rs.color} onChange={e => updateSegOverride(seg.id, { color: e.target.value })}
+                                style={{ width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0, background: 'none' }} />
+                            </div>
+
+                            {/* Highlight color */}
+                            <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Highlight Color</div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                              {COLORS.map(c => (
+                                <div key={c} onClick={() => updateSegOverride(seg.id, { highlightColor: c })}
+                                  style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: rs.highlightColor === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />
+                              ))}
+                              <input type="color" value={rs.highlightColor} onChange={e => updateSegOverride(seg.id, { highlightColor: e.target.value })}
+                                style={{ width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0, background: 'none' }} />
+                            </div>
+
+                            {/* Font size */}
+                            <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Size — {rs.fontSize}px</div>
+                            <input type="range" min={14} max={60} value={rs.fontSize} style={{ ...S.range, marginBottom: 8 }}
+                              onChange={e => updateSegOverride(seg.id, { fontSize: +e.target.value })} />
+
+                            {/* Font */}
+                            <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Font</div>
+                            <select style={{ ...S.select, fontSize: 11, padding: '3px 6px', marginBottom: 8 }} value={rs.fontFamily}
+                              onChange={e => updateSegOverride(seg.id, { fontFamily: e.target.value })}>
+                              {FONTS.map(f => <option key={f}>{f}</option>)}
+                            </select>
+
+                            {/* Box style */}
+                            <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Box Style</div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                              {[{id:'none',l:'ไม่มี'},{id:'solid',l:'Box'},{id:'rounded_solid',l:'Rounded'},{id:'pill',l:'Pill'}].map(b => (
+                                <button key={b.id} style={{ ...S.chip, ...(rs.boxStyle === b.id ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
+                                  onClick={() => updateSegOverride(seg.id, { boxStyle: b.id as any })}>{b.l}</button>
+                              ))}
+                            </div>
+
+                            {/* Toggle options */}
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                              {([['bold','Bold'],['italic','Italic'],['outline','Outline'],['shadow','Shadow']] as const).map(([k,l]) => (
+                                <button key={k} style={{ ...S.chip, ...((rs as any)[k] ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
+                                  onClick={() => updateSegOverride(seg.id, { [k]: !(rs as any)[k] })}>{l}</button>
+                              ))}
+                            </div>
+
+                            {/* Position */}
+                            <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Position</div>
+                            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                              {(['top','middle','bottom'] as const).map(p => (
+                                <button key={p} style={{ ...S.chip, ...(rs.position === p && rs.posY === -1 ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
+                                  onClick={() => updateSegOverride(seg.id, { position: p, posY: -1 })}>{p}</button>
+                              ))}
+                            </div>
+
+                            {/* Reset */}
+                            {hasOv && (
+                              <button style={{ ...S.chip, fontSize: 10, padding: '2px 8px', color: '#F472B6', borderColor: 'rgba(244,114,182,0.3)' }}
+                                onClick={() => clearSegOverride(seg.id)}>↩ Reset to global</button>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )
                 })}
@@ -1309,7 +1422,7 @@ export default function VideoEditor() {
 <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
             {useJassub
               ? <JassubPreview videoRef={videoRef} assContent={assContent} />
-              : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={style} />}
+              : <SubtitleRenderer seg={currentSeg} words={words} currentTime={currentTime} style={currentSeg ? resolveStyle(currentSeg.id) : style} />}
             <button
               style={{ position: 'absolute', top: 8, right: 8, zIndex: 25, fontSize: 10, padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(167,139,250,0.4)', background: useJassub ? 'rgba(124,58,237,0.6)' : 'rgba(0,0,0,0.4)', color: '#E9D5FF', cursor: 'pointer' }}
               onClick={() => setUseJassub(v => !v)}

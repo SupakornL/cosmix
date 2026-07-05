@@ -229,6 +229,7 @@ class SubtitleEntry(BaseModel):
     start: float
     end: float
     text: str = ""
+    segId: Optional[int] = None
 
 class TrimRange(BaseModel):
     start: float = 0
@@ -237,6 +238,7 @@ class TrimRange(BaseModel):
 class ExportRequest(BaseModel):
     subtitles: list[SubtitleEntry] = []
     subtitle_style: dict = {}
+    seg_overrides: dict = {}  # segId (str) -> Partial[SubStyle]
     trim: TrimRange = TrimRange()
     speed: float = Field(default=1.0, gt=0)
     volume: float = Field(default=1.0, ge=0)
@@ -250,7 +252,7 @@ class AssPreviewRequest(BaseModel):
     vid_h: int = 1920
     previewWidth: float = 0
 
-def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: int, preview_width: float = 0, measured_char_width_px: float = 0) -> str:
+def build_ass_content(subtitle_style: dict, subtitles: list, vid_w: int, vid_h: int, preview_width: float = 0, measured_char_width_px: float = 0, seg_overrides: dict = {}) -> str:
     """Build the full ASS subtitle file content for the given style/subtitles/resolution.
 
     Shared by the export pipeline (which writes this to a temp .ass file for ffmpeg's
@@ -433,6 +435,62 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         end = fmt_time_ass(sub.end)
         text = sub.text.replace('\n', '\\N')
 
+        # Resolve per-segment style override
+        sub_ov = {}
+        if seg_overrides and sub.segId is not None:
+            sub_ov = seg_overrides.get(str(sub.segId), seg_overrides.get(sub.segId, {}))
+
+        # Build inline ASS override tags for this dialogue
+        inline_tags = ""
+        if sub_ov:
+            tags = []
+            if 'color' in sub_ov:
+                ov_hex = str(sub_ov['color']).lstrip('#').upper().zfill(6)
+                ov_bgr = ov_hex[4:6] + ov_hex[2:4] + ov_hex[0:2]
+                tags.append(f"\\1c&H{ov_bgr}&")
+            if 'bold' in sub_ov:
+                tags.append(f"\\b{'1' if sub_ov['bold'] else '0'}")
+            if 'italic' in sub_ov:
+                tags.append(f"\\i{'1' if sub_ov['italic'] else '0'}")
+            if 'shadow' in sub_ov:
+                tags.append(f"\\shad{'2' if sub_ov['shadow'] else '0'}")
+            if 'outline' in sub_ov:
+                tags.append(f"\\bord{'2' if sub_ov['outline'] else '0'}")
+            if 'fontSize' in sub_ov:
+                ov_fs = float(sub_ov['fontSize'])
+                if display_mode == 'word_single':
+                    ov_fs *= 1.2
+                elif display_mode in ('scale_pop', 'scale_pop_bold'):
+                    ov_fs *= 1.6
+                if preview_width and preview_width > 0:
+                    ov_fs = ov_fs * (vid_w / preview_width) * 2.0
+                tags.append(f"\\fs{int(round(ov_fs))}")
+            if tags:
+                inline_tags = "{" + "".join(tags) + "}"
+
+        # Recompute position if override has position fields
+        sub_pos_tag = pos_tag
+        sub_center_x = center_x
+        sub_center_y = center_y
+        if sub_ov and ('position' in sub_ov or 'posX' in sub_ov or 'posY' in sub_ov):
+            ov_pos = sub_ov.get('position', position)
+            ov_posX = float(sub_ov.get('posX', subtitle_style.get('posX', 50)))
+            ov_posY = float(sub_ov.get('posY', subtitle_style.get('posY', -1)))
+            if ov_posY != -1:
+                sub_center_x = vid_w * ov_posX / 100
+                sub_center_y = vid_h * ov_posY / 100
+            else:
+                sub_center_x = vid_w / 2
+                sub_center_y = vid_h * {'top': 0.08, 'middle': 0.50, 'bottom': 0.85}.get(ov_pos, 0.85)
+            sub_pos_tag = f"\\an5\\pos({sub_center_x:.1f},{sub_center_y:.1f})"
+
+        # Box color override for drawn boxes
+        sub_box_fill_color = box_fill_color if use_drawn_box else None
+        if sub_ov and 'boxColor' in sub_ov and use_drawn_box:
+            ov_bc = str(sub_ov['boxColor']).lstrip('#').upper().zfill(6)
+            ov_bc_bgr = ov_bc[4:6] + ov_bc[2:4] + ov_bc[0:2]
+            sub_box_fill_color = f"&H{box_fill_color[2:4]}{ov_bc_bgr}"
+
         if use_drawn_box:
             # Estimate the text's rendered box and draw a rounded rectangle behind it.
             # Thai combining vowel/tone marks (e.g. ิ ี ึ ื ุ ู ั ็ ่ ้ ๊ ๋ ์ ํ) stack on the
@@ -481,14 +539,31 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 f"l 0 {r:.1f} "
                 f"b 0 {r-k:.1f} {r-k:.1f} 0 {r:.1f} 0"
             )
-            box_alpha, box_bgr = box_fill_color[2:4], box_fill_color[4:10]
+            eff_box_fill = sub_box_fill_color or box_fill_color
+            box_alpha, box_bgr = eff_box_fill[2:4], eff_box_fill[4:10]
+            box_x = sub_center_x - box_w / 2
+            box_y = sub_center_y - box_h / 2
+            box_center_x = sub_center_x
+            box_center_y = sub_center_y
+            r, w, h = radius, box_w, box_h
+            k = r * 0.5523
+            drawing = (
+                f"m {r:.1f} 0 l {w-r:.1f} 0 "
+                f"b {w-r+k:.1f} 0 {w:.1f} {k:.1f} {w:.1f} {r:.1f} "
+                f"l {w:.1f} {h-r:.1f} "
+                f"b {w:.1f} {h-r+k:.1f} {w-r+k:.1f} {h:.1f} {w-r:.1f} {h:.1f} "
+                f"l {r:.1f} {h:.1f} "
+                f"b {r-k:.1f} {h:.1f} 0 {h-r+k:.1f} 0 {h-r:.1f} "
+                f"l 0 {r:.1f} "
+                f"b 0 {r-k:.1f} {r-k:.1f} 0 {r:.1f} 0"
+            )
             override = f"{{\\an7\\pos({box_x:.1f},{box_y:.1f})\\p1\\1a&H{box_alpha}&\\1c&H{box_bgr}&}}{drawing}{{\\p0}}"
             ass_lines.append(f"Dialogue: 0,{start},{end},Box,,0,0,0,,{override}\n")
             text_prefix = f"{{\\an5\\pos({box_center_x:.1f},{box_center_y:.1f})}}"
-            ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
+            ass_lines.append(f"Dialogue: 1,{start},{end},Default,,0,0,0,,{text_prefix}{inline_tags}{text}\n")
         else:
-            text_prefix = f"{{{pos_tag}}}"
-            ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{text}\n")
+            text_prefix = f"{{{sub_pos_tag}}}"
+            ass_lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text_prefix}{inline_tags}{text}\n")
 
     return "".join(ass_lines)
 
@@ -569,6 +644,7 @@ async def export_video(
         vid_h=vid_h,
         preview_width=body.previewWidth,
         measured_char_width_px=body.measuredCharWidthPx,
+        seg_overrides=body.seg_overrides,
     )
 
     with tempfile.NamedTemporaryFile(suffix=".ass", delete=False, mode='w', encoding='utf-8') as f:
