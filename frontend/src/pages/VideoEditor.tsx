@@ -6,7 +6,7 @@ import JassubPreview from '../components/JassubPreview'
 // ─── Types ───────────────────────────────────────────────────
 interface Segment { id: number; start: number; end: number; text: string }
 interface WordStamp { word: string; start: number; end: number }
-interface TextLayer { id: number; text: string; x: number; y: number; fontSize: number; color: string; bold: boolean; start: number; end: number; always: boolean }
+interface TextLayer { id: number; text: string; x: number; y: number; fontSize: number; color: string; bold: boolean; fontFamily: string; boxStyle: 'none' | 'square' | 'pill'; boxColor: string; start: number; end: number; always: boolean }
 
 interface SubStyle {
   fontFamily: string; fontSize: number; color: string
@@ -483,16 +483,26 @@ function TextLayerRenderer({ layers, currentTime }: { layers: TextLayer[]; curre
       {layers.map(layer => {
         const visible = layer.always || (currentTime >= layer.start && currentTime <= layer.end)
         if (!visible) return null
+        const boxStyle = layer.boxStyle || 'none'
+        const hasBg = boxStyle !== 'none'
         return (
           <div key={layer.id} style={{
             position: 'absolute',
             left: `${layer.x}%`, top: `${layer.y}%`,
             transform: 'translate(-50%, -50%)',
-            color: layer.color, fontSize: layer.fontSize,
+            color: layer.color,
+            fontSize: layer.fontSize,
             fontWeight: layer.bold ? 'bold' : 'normal',
+            fontFamily: layer.fontFamily ? `'${layer.fontFamily}', sans-serif` : 'sans-serif',
             pointerEvents: 'none', zIndex: 11,
-            textShadow: '2px 2px 4px rgba(0,0,0,0.9)',
             whiteSpace: 'nowrap',
+            ...(hasBg ? {
+              background: layer.boxColor || '#000000',
+              padding: boxStyle === 'pill' ? '3px 14px' : '3px 8px',
+              borderRadius: boxStyle === 'pill' ? 999 : 6,
+            } : {
+              textShadow: '2px 2px 4px rgba(0,0,0,0.9)',
+            }),
           }}>{layer.text}</div>
         )
       })}
@@ -539,6 +549,7 @@ export default function VideoEditor() {
   const [, tick] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragTargetSegId, setDragTargetSegId] = useState<number | null>(null)
+  const [dragTargetLayerId, setDragTargetLayerId] = useState<number | null>(null)
   const [globalStyleOpen, setGlobalStyleOpen] = useState(false)
   const [openTextPanel, setOpenTextPanel] = useState<number | null>(null)
   const [suggestions, setSuggestions] = useState<any>(null)
@@ -738,7 +749,7 @@ export default function VideoEditor() {
   }
 
   function addTextLayer() {
-    setTextLayers(l => [...l, { id: Date.now(), text: 'New text', x: 50, y: 20, fontSize: 28, color: '#FFFFFF', bold: true, start: currentTime, end: currentTime + 3, always: false }])
+    setTextLayers(l => [...l, { id: Date.now(), text: 'New text', x: 50, y: 20, fontSize: 28, color: '#FFFFFF', bold: true, fontFamily: 'Sarabun', boxStyle: 'none', boxColor: '#000000', start: currentTime, end: currentTime + 3, always: false }])
   }
 
   const saveSubtitles = useCallback(async (segs: typeof segments) => {
@@ -1331,6 +1342,7 @@ export default function VideoEditor() {
                       {/* Expandable panel */}
                       {isOpen && (
                         <div style={{ padding: '0 12px 12px', borderTop: '0.5px solid rgba(139,92,246,0.15)' }}>
+                          {/* Position + Size */}
                           <div style={{ display: 'flex', gap: 6, marginTop: 10, marginBottom: 8 }}>
                             <div style={{ flex: 1 }}>
                               <div style={{ color: '#475569', fontSize: 9, marginBottom: 3 }}>X%</div>
@@ -1348,7 +1360,15 @@ export default function VideoEditor() {
                                 onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, fontSize: +e.target.value } : x))} />
                             </div>
                           </div>
-                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Color</div>
+                          {/* Font */}
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Font</div>
+                          <select style={{ ...S.select, fontSize: 11, padding: '3px 6px', marginBottom: 8, width: '100%' }}
+                            value={layer.fontFamily || 'Sarabun'}
+                            onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, fontFamily: e.target.value } : x))}>
+                            {FONTS.map(f => <option key={f}>{f}</option>)}
+                          </select>
+                          {/* Text color */}
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Text Color</div>
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
                             {COLORS.slice(0,8).map(c => (
                               <div key={c} onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, color: c } : x))}
@@ -1357,11 +1377,39 @@ export default function VideoEditor() {
                             <input type="color" value={layer.color} onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, color: e.target.value } : x))}
                               style={{ width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
                           </div>
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+                          {/* Box style */}
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Box</div>
+                          <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                            {(['none', 'square', 'pill'] as const).map(bs => (
+                              <button key={bs} style={{ ...S.chip, ...((layer.boxStyle || 'none') === bs ? S.chipActive : {}), fontSize: 10, padding: '2px 8px' }}
+                                onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, boxStyle: bs } : x))}>
+                                {bs === 'none' ? 'None' : bs === 'square' ? '▬ Square' : '⬭ Pill'}
+                              </button>
+                            ))}
+                          </div>
+                          {(layer.boxStyle && layer.boxStyle !== 'none') && (
+                            <>
+                              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Box Color</div>
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                                {BOX_COLORS.map(c => (
+                                  <div key={c} onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, boxColor: c } : x))}
+                                    style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: (layer.boxColor || '#000000') === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />
+                                ))}
+                                <input type="color" value={layer.boxColor || '#000000'} onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, boxColor: e.target.value } : x))}
+                                  style={{ width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
+                              </div>
+                            </>
+                          )}
+                          {/* Style toggles + drag */}
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
                             <button style={{ ...S.chip, ...(layer.bold ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
                               onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, bold: !x.bold } : x))}>Bold</button>
                             <button style={{ ...S.chip, ...(layer.always ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
-                              onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, always: !x.always } : x))}>Always show</button>
+                              onClick={() => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, always: !x.always } : x))}>Always</button>
+                            <button style={{ ...S.chip, ...(isDragging && dragTargetLayerId === layer.id ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
+                              onClick={() => { setDragTargetLayerId(layer.id); setDragTargetSegId(null); setIsDragging(true) }}>
+                              {isDragging && dragTargetLayerId === layer.id ? '🎯 Drag...' : '✥ Drag'}
+                            </button>
                           </div>
                           {!layer.always && (
                             <div style={{ display: 'flex', gap: 6 }}>
@@ -1551,7 +1599,8 @@ export default function VideoEditor() {
                 const rect = wrap.getBoundingClientRect()
                 const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100))
                 const y = Math.max(3, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100))
-                if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
+                if (dragTargetLayerId !== null) setTextLayers(l => l.map(t => t.id === dragTargetLayerId ? { ...t, x, y } : t))
+                else if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
                 else setStyle(s => ({ ...s, posX: x, posY: y }))
                 setIsDragging(true)
               }}
@@ -1562,11 +1611,12 @@ export default function VideoEditor() {
                 const rect = wrap.getBoundingClientRect()
                 const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100))
                 const y = Math.max(3, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100))
-                if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
+                if (dragTargetLayerId !== null) setTextLayers(l => l.map(t => t.id === dragTargetLayerId ? { ...t, x, y } : t))
+                else if (dragTargetSegId !== null) updateSegOverride(dragTargetSegId, { posX: x, posY: y })
                 else setStyle(s => ({ ...s, posX: x, posY: y }))
               }}
-              onMouseUp={() => { setIsDragging(false); setDragTargetSegId(null) }}
-              onMouseLeave={() => { setIsDragging(false); setDragTargetSegId(null) }}
+              onMouseUp={() => { setIsDragging(false); setDragTargetSegId(null); setDragTargetLayerId(null) }}
+              onMouseLeave={() => { setIsDragging(false); setDragTargetSegId(null); setDragTargetLayerId(null) }}
             />
             {filter.vignette > 0 && (
               <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 4,
