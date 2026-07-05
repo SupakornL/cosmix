@@ -183,7 +183,7 @@ export default function EditorPage() {
 
       {/* Nav */}
       <nav style={S.nav}>
-        <div style={S.navLogo} onClick={() => navigate('/editor')}>⬡ COSMIX</div>
+        <div style={S.navLogo} onClick={() => navigate('/')}>⬡ COSMIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {user?.role === 'pay_user' && (
             <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: '#34D399', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>
