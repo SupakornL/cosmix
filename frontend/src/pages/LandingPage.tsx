@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import nebulaBg from '../assets/nebula-bg.png'
+import { useAuthStore } from '../store/auth'
 
 const STARS = Array.from({ length: 180 }, (_, i) => ({
   id: i,
@@ -66,11 +67,20 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const heroRef = useRef<HTMLDivElement>(null)
   const [scrollY, setScrollY] = useState(0)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const loggedIn = isAuthenticated()
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   return (
@@ -227,18 +237,34 @@ export default function LandingPage() {
       </div>
 
       {/* === NAV === */}
-      <nav className="nav-inner" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 48px', background: scrollY > 40 ? 'rgba(6,10,18,0.9)' : 'transparent', backdropFilter: scrollY > 40 ? 'blur(20px)' : 'none', borderBottom: scrollY > 40 ? '1px solid rgba(139,92,246,0.12)' : 'none', transition: 'all 0.3s' }}>
-        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, background: 'linear-gradient(135deg, #A78BFA, #60A5FA, #34D399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '14px 20px' : '16px 48px', background: scrollY > 40 ? 'rgba(6,10,18,0.9)' : 'transparent', backdropFilter: scrollY > 40 ? 'blur(20px)' : 'none', borderBottom: scrollY > 40 ? '1px solid rgba(139,92,246,0.12)' : 'none', transition: 'all 0.3s' }}>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, background: 'linear-gradient(135deg, #A78BFA, #60A5FA, #34D399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', flexShrink: 0 }}>
           ⬡ COSMIX
         </div>
-        <div className="nav-links" style={{ display: 'flex', gap: 36 }}>
-          <span className="nav-link" onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Features</span>
-          <span className="nav-link" onClick={() => navigate('/pricing')} style={{cursor:'pointer'}}>Pricing</span>
-          <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn-outline nav-btn-secondary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/login')}>Log in</button>
-          <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/register')}>ทดลองฟรี 7 วัน</button>
+        {!isMobile && (
+          <div style={{ display: 'flex', gap: 36 }}>
+            <span className="nav-link" onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Features</span>
+            <span className="nav-link" onClick={() => navigate('/pricing')} style={{cursor:'pointer'}}>Pricing</span>
+            <span className="nav-link" onClick={() => document.getElementById('docs')?.scrollIntoView({behavior:'smooth'})} style={{cursor:'pointer'}}>Docs</span>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          {loggedIn ? (
+            <button className="btn-primary" style={{ padding: isMobile ? '8px 16px' : '8px 20px', fontSize: isMobile ? 12 : 13 }} onClick={() => navigate('/editor')}>
+              {isMobile ? '▶ Editor' : '▶ Go to Editor'}
+            </button>
+          ) : (
+            <>
+              <button className="btn-outline" style={{ padding: isMobile ? '7px 14px' : '8px 20px', fontSize: isMobile ? 12 : 13 }} onClick={() => navigate('/login')}>
+                {isMobile ? 'เข้าสู่ระบบ' : 'Log in'}
+              </button>
+              {!isMobile && (
+                <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => navigate('/register')}>
+                  ทดลองฟรี 7 วัน
+                </button>
+              )}
+            </>
+          )}
         </div>
       </nav>
 
@@ -264,11 +290,11 @@ export default function LandingPage() {
           ง่ายเหมือนพิมพ์บอกว่าอยากได้อะไร
         </p>
 
-        <div className="fade-up fade-up-4" style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="btn-primary" style={{ fontSize: 16, padding: '15px 36px' }} onClick={() => navigate('/register')}>
+        <div className="fade-up fade-up-4" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', padding: isMobile ? '0 24px' : '0' }}>
+          <button className="btn-primary" style={{ fontSize: isMobile ? 15 : 16, padding: isMobile ? '13px 0' : '15px 36px', width: isMobile ? '100%' : 'auto' }} onClick={() => navigate('/register')}>
             Start free trial
           </button>
-          <button className="btn-outline" style={{ fontSize: 16, padding: '15px 36px' }}>
+          <button className="btn-outline" style={{ fontSize: isMobile ? 15 : 16, padding: isMobile ? '13px 0' : '15px 36px', width: isMobile ? '100%' : 'auto' }}>
             ▶ Watch demo
           </button>
         </div>
@@ -294,6 +320,50 @@ export default function LandingPage() {
               <span key={m} style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(139,92,246,0.3)', color: '#A78BFA', fontSize: 12, padding: '4px 12px', borderRadius: 20 }}>{m}</span>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* === HOW IT WORKS === */}
+      <section style={{ position: 'relative', zIndex: 1, padding: isMobile ? '40px 20px 60px' : '40px 48px 80px', maxWidth: 860, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ color: '#475569', fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '2px', marginBottom: 12 }}>วิธีใช้งาน</div>
+        <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(22px, 5vw, 34px)', fontWeight: 700, margin: '0 0 40px', background: 'linear-gradient(180deg, #F8FAFC 40%, #64748B 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          4 ขั้นตอน ได้ video พร้อม subtitle
+        </h2>
+
+        {/* Steps grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: isMobile ? 16 : 12 }}>
+          {[
+            { num: '1', icon: '⬆', title: 'อัปโหลดวิดีโอ', desc: 'MP4, MOV, AVI หรือวางลิงก์ YouTube ก็ได้', color: '#A78BFA' },
+            { num: '2', icon: '🎙', title: 'AI ถอดเสียง', desc: 'Whisper AI แปลงเสียงเป็น subtitle แม่นยำ รองรับภาษาไทย', color: '#60A5FA' },
+            { num: '3', icon: '✦', title: 'เลือกสไตล์', desc: 'เลือก mode, สี, ฟอนต์ และ animation ที่ชอบ', color: '#34D399' },
+            { num: '4', icon: '⬇', title: 'Export', desc: 'ดาวน์โหลด MP4 พร้อม subtitle ทันที ไม่มี watermark (Pro)', color: '#F472B6' },
+          ].map((step, i, arr) => (
+            <div key={step.num} style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'center', gap: isMobile ? 16 : 0, background: 'rgba(13,19,34,0.6)', border: `1px solid ${step.color}22`, borderRadius: 16, padding: isMobile ? '16px 20px' : '24px 16px', textAlign: isMobile ? 'left' : 'center' as const }}>
+              {/* Number badge + icon */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: `${step.color}18`, border: `1.5px solid ${step.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: isMobile ? '0' : '0 auto 14px' }}>
+                  {step.icon}
+                </div>
+                <div style={{ position: 'absolute', top: -5, right: -5, width: 20, height: 20, borderRadius: '50%', background: step.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#060A12' }}>
+                  {step.num}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: '#E2E8F0', marginBottom: 6 }}>{step.title}</div>
+                <div style={{ color: '#64748B', fontSize: 12, lineHeight: 1.6 }}>{step.desc}</div>
+              </div>
+              {/* Arrow between steps (desktop only) */}
+              {!isMobile && i < arr.length - 1 && (
+                <div style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', color: '#374151', fontSize: 16, zIndex: 2 }}>›</div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 36 }}>
+          <button className="btn-primary" style={{ fontSize: 15, padding: '12px 32px' }} onClick={() => navigate(loggedIn ? '/editor' : '/register')}>
+            {loggedIn ? '▶ ไปที่ Editor' : 'เริ่มใช้งานฟรี →'}
+          </button>
         </div>
       </section>
 

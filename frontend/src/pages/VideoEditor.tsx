@@ -6,7 +6,7 @@ import JassubPreview from '../components/JassubPreview'
 // ─── Types ───────────────────────────────────────────────────
 interface Segment { id: number; start: number; end: number; text: string }
 interface WordStamp { word: string; start: number; end: number }
-interface TextLayer { id: number; text: string; x: number; y: number; fontSize: number; color: string; bold: boolean; fontFamily: string; boxStyle: 'none' | 'square' | 'pill'; boxColor: string; start: number; end: number; always: boolean }
+interface TextLayer { id: number; text: string; x: number; y: number; fontSize: number; color: string; bold: boolean; fontFamily: string; boxStyle: 'none' | 'square' | 'pill'; boxColor: string; start: number; end: number; always: boolean; maxCharsPerLine: number }
 
 interface SubStyle {
   fontFamily: string; fontSize: number; color: string
@@ -397,18 +397,13 @@ function SubtitleRenderer({ seg, words, currentTime, style, tick, onPositionChan
     )
   }
 
-  // SCALE POP — คำที่พูดอยู่ใหญ่ขึ้น คำอื่นเล็กลง
+  // SCALE POP — คำที่พูดอยู่ใหญ่ขึ้น คำอื่นเล็กลง (แสดงทั้งประโยค)
   if (style.displayMode === 'scale_pop' || style.displayMode === 'scale_pop_bold') {
     const isBold = style.displayMode === 'scale_pop_bold'
-    const activeIdx = segWords.findIndex(w => currentTime >= w.start && currentTime <= w.end)
-    const centerIdx = activeIdx >= 0 ? activeIdx : segWords.findLastIndex(w => currentTime > w.end)
-    const WINDOW = 2 // show 2 words before and after active
-    const start = Math.max(0, centerIdx - WINDOW)
-    const end = Math.min(segWords.length, centerIdx + WINDOW + 1)
-    const visibleWords = segWords.slice(start, end)
+    if (segWords.length === 0) return null
     return (
       <div style={{ ...baseWrap, display: 'flex', flexWrap: 'wrap' as const, justifyContent: 'center', alignItems: 'baseline', gap: 2 }}>
-        {visibleWords.map((w, i) => {
+        {segWords.map((w, i) => {
           const isActive = currentTime >= w.start && currentTime <= w.end
           const isDone = currentTime > w.end
           const wd = style.allCaps ? w.word.toUpperCase() : w.word
@@ -499,6 +494,8 @@ function TextLayerRenderer({ layers, currentTime }: { layers: TextLayer[]; curre
         if (!visible) return null
         const boxStyle = layer.boxStyle || 'none'
         const hasBg = boxStyle !== 'none'
+        const maxCPL = layer.maxCharsPerLine || 0
+        const displayText = maxCPL > 0 ? splitLongText(layer.text, maxCPL) : layer.text
         return (
           <div key={layer.id} style={{
             position: 'absolute',
@@ -509,7 +506,8 @@ function TextLayerRenderer({ layers, currentTime }: { layers: TextLayer[]; curre
             fontWeight: layer.bold ? 'bold' : 'normal',
             fontFamily: layer.fontFamily ? `'${layer.fontFamily}', sans-serif` : 'sans-serif',
             pointerEvents: 'none', zIndex: 11,
-            whiteSpace: 'nowrap',
+            whiteSpace: maxCPL > 0 ? 'pre-wrap' : 'nowrap',
+            textAlign: 'center',
             ...(hasBg ? {
               background: layer.boxColor || '#000000',
               padding: boxStyle === 'pill' ? '3px 14px' : '3px 8px',
@@ -517,7 +515,7 @@ function TextLayerRenderer({ layers, currentTime }: { layers: TextLayer[]; curre
             } : {
               textShadow: '2px 2px 4px rgba(0,0,0,0.9)',
             }),
-          }}>{layer.text}</div>
+          }}>{displayText}</div>
         )
       })}
     </>
@@ -782,7 +780,7 @@ export default function VideoEditor() {
   }
 
   function addTextLayer() {
-    setTextLayers(l => [...l, { id: Date.now(), text: 'New text', x: 50, y: 20, fontSize: 28, color: '#FFFFFF', bold: true, fontFamily: 'Sarabun', boxStyle: 'none', boxColor: '#000000', start: currentTime, end: currentTime + 3, always: false }])
+    setTextLayers(l => [...l, { id: Date.now(), text: 'New text', x: 50, y: 20, fontSize: 28, color: '#FFFFFF', bold: true, fontFamily: 'Sarabun', boxStyle: 'none', boxColor: '#000000', start: currentTime, end: currentTime + 3, always: false, maxCharsPerLine: 0 }])
   }
 
   const saveSubtitles = useCallback(async (segs: typeof segments) => {
@@ -1498,6 +1496,12 @@ export default function VideoEditor() {
                               </div>
                             </>
                           )}
+                          {/* Max chars per line */}
+                          <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>
+                            ตัดบรรทัด — {(layer.maxCharsPerLine || 0) === 0 ? 'ไม่ตัด' : `${layer.maxCharsPerLine} ตัว/บรรทัด`}
+                          </div>
+                          <input type="range" min={0} max={50} value={layer.maxCharsPerLine || 0} style={{ ...S.range, marginBottom: 8 }}
+                            onChange={e => setTextLayers(l => l.map(x => x.id === layer.id ? { ...x, maxCharsPerLine: +e.target.value } : x))} />
                           {/* Style toggles + drag */}
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
                             <button style={{ ...S.chip, ...(layer.bold ? S.chipActive : {}), fontSize: 10, padding: '2px 7px' }}
