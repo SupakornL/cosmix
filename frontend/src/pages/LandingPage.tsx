@@ -314,7 +314,7 @@ export default function LandingPage() {
         >
           <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: 28, animation: 'pulse-ring 2.5s infinite' }}>⬆</div>
           <div style={{ color: '#CBD5E1', fontSize: 17, fontWeight: 500, marginBottom: 8 }}>Drop your video here to get started</div>
-          <div style={{ color: '#475569', fontSize: 13 }}>MP4, MOV, AVI · up to 5GB · or paste a YouTube link</div>
+          <div style={{ color: '#475569', fontSize: 13 }}>MP4, MOV, AVI · up to 5GB</div>
           <div style={{ marginTop: 20, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
             {['Auto Cut', 'Subtitle', 'Suggest Edits', 'Chat to Edit'].map(m => (
               <span key={m} style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(139,92,246,0.3)', color: '#A78BFA', fontSize: 12, padding: '4px 12px', borderRadius: 20 }}>{m}</span>
