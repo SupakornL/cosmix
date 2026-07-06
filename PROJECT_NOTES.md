@@ -281,6 +281,16 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ## 8. Session Log
 
+### 2026-07-06
+- **scale_pop / scale_pop_bold fix**: แก้จาก sliding window 5 คำ → แสดงทั้งประโยคเหมือน word_pop แต่ scale ต่างกัน (active 1.6x, อื่นๆ 0.85x)
+- **Text layer maxCharsPerLine**: เพิ่ม field + slider ใน mini panel — ตัดบรรทัดอัตโนมัติเมื่อข้อความยาวเกิน N ตัวอักษร
+- **Subtitle mode audit (Hermes/Opus)**: ตรวจทุก mode — ทุก mode OK ยกเว้น scale_pop edge case ก่อนคำแรก (fixed)
+- **Landing page How-it-works**: เพิ่ม 4-step grid section (desktop 4-col, mobile 1-col) ระหว่าง upload zone กับ features
+- **Landing page mobile nav**: เปลี่ยนจาก CSS class → JS isMobile, ปุ่ม login โชว์บน mobile, ไม่ล้นจอ
+- **Auth-aware nav**: nav แสดง "▶ Go to Editor" ถ้า login แล้ว แทน login/register
+- **JWT token 7 วัน**: เพิ่มจาก 24h → 7 days ใน `backend/app/core/config.py`
+- **Remove YouTube placeholder**: ลบข้อความ "or paste a YouTube link" ออกจาก upload zone (ยังไม่ implement จริง)
+
 ### 2026-07-05
 - **Per-segment subtitle style overrides**: แต่ละ segment มี color/bold/italic/shadow/outline/fontSize/position override แยกกัน + ซ่อน segment ได้ (`hiddenSegs`)
 - **Drag-to-position per segment**: เพิ่ม `dragTargetSegId` — กด Drag ใน mini panel ของ segment แล้วลากบน preview ปรับ posX/posY เฉพาะ segment นั้น
