@@ -22,4 +22,5 @@ stay in sync.
    },
    ```
    tag ของ agent: `"Hermes"` (code), `"Argus Panoptes"` (review), `"Apollo"` (research), `"Arthur"` (coordination)
-3. **Commit ทั้งสองไฟล์** — commit `PROJECT_NOTES.md` ใน repo นี้ก่อน แล้ว commit `agent-data.js` ใน `/Users/macintosh/olympus-system` แยกต่างหาก
+3. **อัปเดต Agent Skill % (XP)** — ใน `window.OLYMPUS_AGENT_DATA` (ไฟล์เดียวกัน) bump % ของ skill ที่ตรงกับงานที่ tag ไว้ข้างบน: งานเล็ก +5%, งานกลาง +10-15%, งานใหญ่ +15-25% ครบ 100% → lv+1 แล้ว reset pct เท่าส่วนเกิน ทำเป็นกฎถาวรทุกครั้งที่แก้ step 2 ไม่ต้องรอพี่บอสสั่ง
+4. **Commit ทั้งสองไฟล์** — commit `PROJECT_NOTES.md` ใน repo นี้ก่อน แล้ว commit `agent-data.js` ใน `/Users/macintosh/olympus-system` แยกต่างหาก
