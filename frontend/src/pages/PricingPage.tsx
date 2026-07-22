@@ -94,7 +94,7 @@ export default function PricingPage() {
           {token ? (
             <>
               <span style={{ color: '#64748B', fontSize: 13 }}>{user?.email}</span>
-              <button style={S.btnGhost} onClick={() => navigate('/editor')}>Back to Editor</button>
+              <button style={S.btnPrimary} onClick={() => navigate('/editor')}>▶ Go to Editor</button>
             </>
           ) : (
             <>
@@ -200,9 +200,11 @@ export default function PricingPage() {
         <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 700, margin: '0 0 12px', color: '#F8FAFC' }}>
           พร้อมเริ่มแล้วใช่มั้ย?
         </h2>
-        <p style={{ color: '#475569', marginBottom: 28 }}>ทดลองใช้ฟรี 7 วัน ไม่ต้องใส่บัตรเครดิต</p>
-        <button style={{ ...S.btnPrimary, fontSize: 16, padding: '14px 36px' }} onClick={() => navigate('/register')}>
-          Start free trial
+        <p style={{ color: '#475569', marginBottom: 28 }}>
+          {token ? 'กลับไปเริ่มตัดต่อได้เลย' : 'ทดลองใช้ฟรี 7 วัน ไม่ต้องใส่บัตรเครดิต'}
+        </p>
+        <button style={{ ...S.btnPrimary, fontSize: 16, padding: '14px 36px' }} onClick={() => navigate(token ? '/editor' : '/register')}>
+          {token ? '▶ Go to Editor' : 'Start free trial'}
         </button>
       </div>
 

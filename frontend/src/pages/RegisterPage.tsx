@@ -8,6 +8,8 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ fullName: '', email: '', password: '', confirm: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
@@ -33,12 +35,44 @@ export default function RegisterPage() {
       })
       const user = await meRes.json()
       setAuth(data.access_token, user)
-      navigate('/editor')
+      setRegisteredEmail(form.email)
+      setDone(true)
     } catch {
       setError('Cannot connect to server')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (done) {
+    return (
+      <div style={styles.wrap}>
+        <style>{css}</style>
+        <div style={styles.starsWrap}>
+          {STARS.map(s => (
+            <div key={s.id} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size, borderRadius: '50%', background: '#fff', opacity: s.op, animation: `tw ${s.dur}s ease-in-out infinite ${s.delay}s` }} />
+          ))}
+        </div>
+        <div style={styles.logo} onClick={() => navigate('/')}>⬡ COSMIX</div>
+        <div style={{ ...styles.card, textAlign: 'center' }} className="card-in">
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+          <h2 style={{ ...styles.title, marginBottom: 8 }}>ยินดีต้อนรับ!</h2>
+          <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 4 }}>{registeredEmail}</p>
+          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, margin: '16px 0 28px' }}>
+            Account ของคุณพร้อมแล้ว — คุณมีสิทธิ์ทดลองใช้ฟรี 7 วัน<br />
+            เริ่มต้นด้วยการ <strong style={{ color: '#A78BFA' }}>อัปโหลดวิดีโอ</strong> แล้วปล่อยให้ AI ตัดต่อให้คุณ
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <button style={{ ...styles.btnPrimary, fontSize: 15 }} onClick={() => navigate('/editor')} className="btn-glow">
+              ▶ ไปที่ Editor — อัปโหลดวิดีโอแรก
+            </button>
+            <button style={{ background: 'transparent', border: '1px solid rgba(139,92,246,0.25)', color: '#64748B', padding: '11px', borderRadius: 12, fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }} onClick={() => navigate('/pricing')}>
+              ดู pricing plans
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const strength = form.password.length === 0 ? 0 : form.password.length < 8 ? 1 : form.password.length < 12 ? 2 : 3
