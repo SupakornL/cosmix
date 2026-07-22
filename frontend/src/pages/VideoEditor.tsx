@@ -900,7 +900,7 @@ export default function VideoEditor() {
 
         {/* VIDEO CENTER — on mobile comes first */}
         {isMobile && (
-          <div style={{ ...S.center, flex: 'none', height: '45vw', minHeight: 200, maxHeight: '50vh' }}>
+          <div style={{ ...S.center, flex: 'none', width: '100%', aspectRatio: '16/9' }}>
             <div style={S.videoWrap} data-video-wrap="1">
               <video ref={videoRef} src={videoUrl} style={{ ...S.video, filter: buildCSSFilter(filter) }} onClick={togglePlay} />
               {useJassub
@@ -935,22 +935,22 @@ export default function VideoEditor() {
               {!videoUrl && <div style={S.noVid}><div style={{ fontSize: 48, opacity: 0.1 }}>🎬</div><div style={{ color: '#374151', marginTop: 10, fontSize: 13 }}>Preview unavailable</div></div>}
             </div>
             <div style={S.controls}>
-              <button style={S.playBtn} onClick={togglePlay}>{playing ? '⏸' : '▶'}</button>
-              <span style={{ color: '#64748B', fontSize: 11, minWidth: 70 }}>{fmtTime(currentTime)} / {fmtTime(duration)}</span>
-              <div style={S.seekBar} onClick={e => {
+              <button style={{ ...S.playBtn, width: 44, height: 44, fontSize: 16, borderRadius: 10 }} onClick={togglePlay}>{playing ? '⏸' : '▶'}</button>
+              <span style={{ color: '#64748B', fontSize: 12, minWidth: 76 }}>{fmtTime(currentTime)} / {fmtTime(duration)}</span>
+              <div style={{ ...S.seekBar, height: 10, borderRadius: 5 }} onClick={e => {
                 if (!duration) return
                 const r = e.currentTarget.getBoundingClientRect()
                 seek(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * duration)
               }}>
-                <div style={{ position: 'absolute', left: 0, width: `${(currentTime/duration)*100}%`, height: '100%', background: 'linear-gradient(90deg,#7C3AED,#A78BFA)', borderRadius: 3, pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', left: `${(currentTime/duration)*100}%`, top: '50%', transform: 'translate(-50%,-50%)', width: 12, height: 12, borderRadius: '50%', background: '#A78BFA', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', left: 0, width: `${(currentTime/duration)*100}%`, height: '100%', background: 'linear-gradient(90deg,#7C3AED,#A78BFA)', borderRadius: 5, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', left: `${(currentTime/duration)*100}%`, top: '50%', transform: 'translate(-50%,-50%)', width: 18, height: 18, borderRadius: '50%', background: '#A78BFA', pointerEvents: 'none' }} />
               </div>
             </div>
           </div>
         )}
 
         {/* LEFT PANEL */}
-        <div style={{ ...S.left, width: isMobile ? '100%' : 260, minWidth: isMobile ? 'unset' : 260, flex: isMobile ? '1' : 'none', height: isMobile ? undefined : '100%' }}>
+        <div style={{ ...S.left, width: isMobile ? '100%' : 260, minWidth: isMobile ? 'unset' : 260, flex: isMobile ? '1' : 'none', height: '100%', minHeight: 0 }}>
           <div style={S.tabs}>
             {[
               { id: 'subs', icon: '⌨', label: 'Subs' },
@@ -959,9 +959,9 @@ export default function VideoEditor() {
               { id: 'suggest', icon: '✦', label: 'AI' },
               { id: 'export', icon: '⚙', label: 'More' },
             ].map(t => (
-              <button key={t.id} style={{ ...S.tab, ...(activeTab === t.id ? S.tabActive : {}) }} onClick={() => setActiveTab(t.id as any)}>
-                <span style={{ display: 'block', fontSize: 13 }}>{t.icon}</span>
-                <span style={{ fontSize: 9 }}>{t.label}</span>
+              <button key={t.id} style={{ ...S.tab, ...(activeTab === t.id ? S.tabActive : {}), ...(isMobile ? { minHeight: 44, padding: '6px 2px' } : {}) }} onClick={() => setActiveTab(t.id as any)}>
+                <span style={{ display: 'block', fontSize: isMobile ? 18 : 13 }}>{t.icon}</span>
+                <span style={{ fontSize: isMobile ? 10 : 9 }}>{t.label}</span>
               </button>
             ))}
           </div>
