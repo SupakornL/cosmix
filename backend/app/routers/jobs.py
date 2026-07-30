@@ -402,9 +402,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     ass_lines = [ass_header]
 
-    # Scale Pop: build context window (2 words before + active + 2 after) with ASS inline tags
+    # Scale Pop / Word Pop: show all words in the same segment per dialogue entry.
+    # Active word is highlighted; done/upcoming words are dimmed.
+    # Group subtitles by segId first so each word knows its siblings.
     is_scale_pop = display_mode in ('scale_pop', 'scale_pop_bold')
-    if is_scale_pop and len(subtitles) > 0:
+    is_word_pop = display_mode == 'word_pop'
+    if (is_scale_pop or is_word_pop) and len(subtitles) > 0:
+        from collections import defaultdict
+        seg_map: dict = defaultdict(list)
+        for sub in subtitles:
+            seg_map[sub.segId].append(sub)
+
         hl_hex_raw = subtitle_style.get('highlightColor', '#FFFF00').lstrip('#').upper()
         hl_ass_bgr = hl_hex_raw[4:6] + hl_hex_raw[2:4] + hl_hex_raw[0:2] if len(hl_hex_raw) == 6 else 'FFFFFF'
         ctx_color = subtitle_style.get('color', '#FFFFFF').lstrip('#').upper()
@@ -412,19 +420,25 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         base_size = subtitle_style.get('fontSize', 24)
         if preview_width and preview_width > 0:
             base_size = base_size * (vid_w / preview_width) * 2.0
-        active_size = int(round(base_size * 1.6))
-        ctx_size = int(round(base_size * 0.85))
-        WINDOW = 2
-        for idx, sub in enumerate(subtitles):
+        if is_scale_pop:
+            active_size = int(round(base_size * 1.6))
+            ctx_size = int(round(base_size * 0.85))
+        else:  # word_pop: 1.45x active, 0.9x context
+            active_size = int(round(base_size * 1.45))
+            ctx_size = int(round(base_size * 0.9))
+
+        for sub in subtitles:
             s_start = fmt_time_ass(sub.start)
             s_end = fmt_time_ass(sub.end)
+            seg_words = seg_map[sub.segId]
             parts = []
-            for j in range(max(0, idx - WINDOW), min(len(subtitles), idx + WINDOW + 1)):
-                w = subtitles[j]
-                if j == idx:
-                    parts.append(f"{{\\fs{active_size}\\1c&H{hl_ass_bgr}&\\bord1.5\\shad1\\3c&H000000&\\4c&H000000&}} {w.text} ")
+            for w in seg_words:
+                is_active = w.start == sub.start
+                is_done = w.end < sub.start
+                if is_active:
+                    parts.append(f"{{\\fs{active_size}\\1c&H{hl_ass_bgr}&\\b1\\bord1.5\\shad1\\3c&H000000&\\4c&H000000&}} {w.text} ")
                 else:
-                    alpha = 'A0' if j < idx else '60'
+                    alpha = 'A0' if is_done else '60'
                     parts.append(f"{{\\fs{ctx_size}\\1c&H{ctx_ass_bgr}&\\1a&H{alpha}&\\bord1\\shad0.5\\3c&H000000&}} {w.text} ")
             text_prefix = f"{{{pos_tag}}}"
             ass_lines.append(f"Dialogue: 0,{s_start},{s_end},Default,,0,0,0,,{text_prefix}{''.join(parts)}\n")
@@ -462,6 +476,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     ov_fs *= 1.2
                 elif display_mode in ('scale_pop', 'scale_pop_bold'):
                     ov_fs *= 1.6
+                elif display_mode == 'word_pop':
+                    ov_fs *= 1.45
                 if preview_width and preview_width > 0:
                     ov_fs = ov_fs * (vid_w / preview_width) * 2.0
                 tags.append(f"\\fs{int(round(ov_fs))}")
