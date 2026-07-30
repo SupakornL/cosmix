@@ -281,6 +281,14 @@ ASS `BorderStyle=4` = opaque **rectangle** เท่านั้น ไม่ม
 
 ## 8. Session Log
 
+### 2026-07-30
+- **Box color in segment override panel**: เพิ่ม color picker สำหรับกล่อง per-segment — แสดงเมื่อ `boxStyle !== 'none'` (เคยมีแต่ global ไม่มี per-segment)
+- **word_trail blur fix**: ลบ `textShadow` ออกจาก container และ non-active trail words — shadow เหลือเฉพาะคำที่กำลังพูดอยู่ (active)
+- **ExpiredGateway screen**: เพิ่ม component แสดงหน้า "Trial หมดอายุ" (Hermes) แทนการ redirect ไป /login เมื่อ `user.role === 'expired'`
+- **Register welcome screen**: หลัง register สำเร็จแสดงหน้าต้อนรับพร้อม trial info แทนการ navigate ทันที (Hermes)
+- **Pricing page auth-aware nav**: PricingPage แสดง "▶ Go to Editor" เมื่อ login แล้ว (Hermes)
+- **Mobile editor UX (Lady Wei)**: video `aspectRatio: 16/9`, tab bar `minHeight: 44px`, play button 44×44px, seek bar 10px, sidebar scroll fix
+
 ### 2026-07-06
 - **scale_pop / scale_pop_bold fix**: แก้จาก sliding window 5 คำ → แสดงทั้งประโยคเหมือน word_pop แต่ scale ต่างกัน (active 1.6x, อื่นๆ 0.85x)
 - **Text layer maxCharsPerLine**: เพิ่ม field + slider ใน mini panel — ตัดบรรทัดอัตโนมัติเมื่อข้อความยาวเกิน N ตัวอักษร
