@@ -251,17 +251,20 @@ function SubtitleRenderer({ seg, words, currentTime, style, tick, onPositionChan
   if (style.displayMode === 'word_trail') {
     let activeIdx = segWords.findIndex(w => currentTime >= w.start && currentTime <= w.end)
     if (activeIdx === -1) {
-      // fallback: last word spoken before currentTime
       activeIdx = [...segWords].map((w, i) => ({ w, i })).filter(({ w }) => currentTime > w.end).pop()?.i ?? 0
     }
     const showFrom = Math.max(0, activeIdx - 2)
     const visible = segWords.slice(showFrom, activeIdx + 1)
     return (
-      <div style={baseWrap}>
+      <div style={{ ...baseWrap, textShadow: 'none' }}>
         {visible.map((w, i) => {
           const isActive = i === visible.length - 1
           const wd = style.allCaps ? w.word.toUpperCase() : w.word
-          return <span key={i} style={{ ...wordStyle(isActive, false), opacity: isActive ? 1 : 0.4 + i*0.2 }}>{wd}</span>
+          return <span key={i} style={{
+            ...wordStyle(isActive, false),
+            opacity: isActive ? 1 : 0.4 + i * 0.2,
+            textShadow: isActive && style.shadow ? '2px 2px 4px rgba(0,0,0,0.9)' : 'none',
+          }}>{wd}</span>
         })}
       </div>
     )
@@ -1351,6 +1354,21 @@ export default function VideoEditor() {
                                   onClick={() => updateSegOverride(seg.id, { boxStyle: b.id as any })}>{b.l}</button>
                               ))}
                             </div>
+
+                            {/* Box color (show when boxStyle != none) */}
+                            {rs.boxStyle !== 'none' && (
+                              <>
+                                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>Box Color</div>
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                                  {BOX_COLORS.map(c => (
+                                    <div key={c} onClick={() => updateSegOverride(seg.id, { boxColor: c })}
+                                      style={{ width: 18, height: 18, borderRadius: 4, background: c, cursor: 'pointer', border: rs.boxColor === c ? '2px solid #A78BFA' : '2px solid rgba(255,255,255,0.1)' }} />
+                                  ))}
+                                  <input type="color" value={rs.boxColor} onChange={e => updateSegOverride(seg.id, { boxColor: e.target.value })}
+                                    style={{ width: 18, height: 18, borderRadius: 4, border: 'none', cursor: 'pointer', padding: 0, background: 'none' }} />
+                                </div>
+                              </>
+                            )}
 
                             {/* Toggle options */}
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
